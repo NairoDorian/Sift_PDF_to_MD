@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 512, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<math display=\"block\">f_{RSSI} = \\frac{2 \\cdot BW_{channel}}{8.2^{FILTER\\_LENGTH}}</math>", "finish_reason": "stop", "tokens": 36, "retries": 0, "error": null}}

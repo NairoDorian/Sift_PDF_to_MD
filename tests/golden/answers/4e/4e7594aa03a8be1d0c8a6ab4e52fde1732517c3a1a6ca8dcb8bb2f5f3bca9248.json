@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 512, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<math display=\"block\">\\frac{L_{major\\_axis}}{L_{minor\\_axis}} &lt; 1.03</math>", "finish_reason": "stop", "tokens": 30, "retries": 0, "error": null}}

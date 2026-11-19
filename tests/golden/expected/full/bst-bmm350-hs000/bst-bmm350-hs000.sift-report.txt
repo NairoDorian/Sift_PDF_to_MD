@@ -1,0 +1,8 @@
+Sift report for bst-bmm350-hs000.pdf (2026-11-06 22:00)
+Items Sift could not resolve automatically. Everything else was verified or corrected.
+
+page 5, images/p005-diagram-03.png: please check these description numbers, not found in the figure's PDF text: 30
+page 6, images/p006-diagram-01.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 1, 2, 3, 4
+page 15, images/p015-diagram-04.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 1
+page 15, images/p015-figure-03.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 1
+page 16, images/p016-diagram-01.png: please check these description numbers, not found in the figure's PDF text: 1

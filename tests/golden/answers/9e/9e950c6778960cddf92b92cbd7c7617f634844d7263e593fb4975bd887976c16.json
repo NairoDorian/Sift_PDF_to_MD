@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 2148, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<table><tr><td>V1.0<td>2026-05-14<td>First Release<td>David Du<tr><td>V1.1<td>2026-08-26<td>Fix VTCXO Voltage<td>David Du</table>", "finish_reason": "stop", "tokens": 51, "retries": 0, "error": null}}

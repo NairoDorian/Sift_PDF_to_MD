@@ -1,0 +1,5 @@
+Figure type: {kind_name}
+Section: {section}
+Caption: {caption}
+Text inside the figure ({figure_text_source}): {figure_text}
+Text that mentions the figure: {nearby_text}

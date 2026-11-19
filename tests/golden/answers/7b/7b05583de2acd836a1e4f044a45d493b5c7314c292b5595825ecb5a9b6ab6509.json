@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 512, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<math display=\"block\">R_{DATA} = \\frac{(256 + DRATE \\cdot M) \\cdot 2^{DRATE - E}}{2^{28}} \\cdot f_{XOSC}</math>", "finish_reason": "stop", "tokens": 45, "retries": 0, "error": null}}

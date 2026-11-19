@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 512, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<math display=\"block\">\\frac{750}{f_{XOSC}} \\cdot 128 \\text{ seconds}</math>", "finish_reason": "stop", "tokens": 19, "retries": 0, "error": null}}

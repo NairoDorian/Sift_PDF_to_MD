@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sift.local/blocks.schema.json",
+  "title": "Sift block model",
+  "description": "A converted PDF: pages of blocks in reading order (crates/sift-core/src/build/blocks.rs; first defined in V0's src/sift/build/blocks.py). The Markdown writer turns blocks straight into Markdown.",
+  "type": "object",
+  "required": ["pages"],
+  "properties": {
+    "pages": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/page" }
+    }
+  },
+  "$defs": {
+    "bbox": {
+      "description": "x0 y0 x1 y1 in PDF points (1/72 inch), top-left origin.",
+      "type": "array",
+      "items": { "type": "number" },
+      "minItems": 4,
+      "maxItems": 4
+    },
+    "page": {
+      "type": "object",
+      "required": ["index", "width", "height", "blocks"],
+      "properties": {
+        "index": { "type": "integer", "minimum": 0, "description": "0-based page number" },
+        "width": { "type": "number" },
+        "height": { "type": "number" },
+        "scanned": { "type": "boolean", "description": "Read by surya's full-page prompt (no usable text layer, or --mode full-ocr)" },
+        "blocks": { "type": "array", "items": { "$ref": "#/$defs/block" } }
+      }
+    },
+    "cell": {
+      "type": "object",
+      "required": ["html", "text"],
+      "properties": {
+        "html": { "type": "string", "description": "Cell content as HTML with inline tags only (b, i, sup, sub, br, u, code); math as $...$" },
+        "text": { "type": "string", "description": "Plain text of the cell" },
+        "header": { "type": "boolean" },
+        "colspan": { "type": "integer", "minimum": 1, "default": 1 },
+        "rowspan": { "type": "integer", "minimum": 1, "default": 1 }
+      }
+    },
+    "table": {
+      "type": "object",
+      "required": ["rows"],
+      "properties": {
+        "rows": { "type": "array", "items": { "type": "array", "items": { "$ref": "#/$defs/cell" } } }
+      }
+    },
+    "list_item": {
+      "type": "object",
+      "required": ["text"],
+      "properties": {
+        "text": { "type": "string", "description": "Inline Markdown" },
+        "level": { "type": "integer", "minimum": 0, "maximum": 4, "default": 0 },
+        "ordered": { "type": "boolean", "default": false },
+        "marker": { "type": "string", "description": "Original number or letter of an ordered item" }
+      }
+    },
+    "block": {
+      "type": "object",
+      "required": ["kind", "page", "bbox"],
+      "properties": {
+        "kind": {
+          "enum": ["heading", "paragraph", "list", "table", "equation", "figure", "caption", "footnote", "code", "toc"]
+        },
+        "page": { "type": "integer", "minimum": 0 },
+        "bbox": { "$ref": "#/$defs/bbox" },
+        "label": {
+          "description": "Layout label the block came from (canonical surya names)",
+          "enum": ["Text", "SectionHeader", "Caption", "Footnote", "ListGroup", "Code", "Bibliography", "TableOfContents",
+                   "PageHeader", "PageFooter", "Table", "Form", "Equation", "Figure", "Picture", "Diagram", "ChemicalBlock", "BlankPage"]
+        },
+        "text": { "type": "string", "description": "Inline Markdown for heading, paragraph, caption, footnote, toc; raw text for code" },
+        "level": { "type": "integer", "minimum": 1, "maximum": 6, "description": "Heading level" },
+        "items": { "type": "array", "items": { "$ref": "#/$defs/list_item" } },
+        "table": { "$ref": "#/$defs/table" },
+        "latex": { "type": "string", "description": "Equation as LaTeX (written as $$...$$)" },
+        "image": { "type": "string", "description": "Figure PNG path relative to the .md, e.g. images/p004-diagram-02.png" },
+        "caption": { "type": "string", "description": "Caption of a figure or table (the figure's alt text)" },
+        "description": { "type": "string", "description": "Image description from the local Gemma 4 model" },
+        "source": { "enum": ["text", "surya", "surya-page"], "description": "text layer, surya per block, or surya full page" },
+        "size": { "type": "number", "description": "Median line height in points (heading levels)" }
+      }
+    }
+  }
+}

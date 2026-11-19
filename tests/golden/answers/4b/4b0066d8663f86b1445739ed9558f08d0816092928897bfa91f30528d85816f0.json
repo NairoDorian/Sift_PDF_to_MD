@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 2148, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<table border=\"1\"><thead><tr><th><b>Acronym</b><th><b>Meaning</b></thead><tbody><tr><td>XOSC<td>Crystal Oscillator<tr><td>Z-Wave / Z-Wave LR<td>Z-Wave / Z-Wave Long Range Protocol</tbody></table>", "finish_reason": "stop", "tokens": 61, "retries": 0, "error": null}}

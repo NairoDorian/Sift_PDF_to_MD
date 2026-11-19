@@ -1,0 +1,28 @@
+# surya 2.5: reads what the PDF's text layer can't give (tables, formulas, scanned or broken
+# text, labels inside figures). Its requests, flags and prompts live in crates/sift-core/src/surya
+# and prompts/surya-2.5 (surya's own, word for word).
+id = "surya-2.5"
+name = "surya 2.5"
+role = "OCR: tables, formulas, scanned or broken text, labels in figures"
+maker = "Datalab"
+license = "modified OpenRAIL-M (Datalab)"
+repo = "datalab-to/surya-ocr-2.5-gguf"
+revision = "eb78671ae9af9bdddfac2e25507c55337b6098e2"
+folder = "surya-ocr-2.5-gguf"
+
+[[files]]
+file = "surya-2.5-Q8_0.gguf"
+size = 628680096
+sha256 = "5ab34c76845f66d2882ec5c89735894b700e0a7decd08898ab962b2afb9aca57"
+
+[[files]]
+file = "surya-2.5-mmproj.gguf"
+size = 207345920
+sha256 = "f245dbf784cf73683a273a37fefae0d0d7983b083a5d2fecf9309476f861f659"
+
+# surya's full-precision weights: settings [surya] model = "bf16"; `sift models download surya-2.5 --quant BF16`
+[[optional]]
+quant = "BF16"
+file = "surya-2.5.gguf"
+size = 1180178976
+sha256 = "45fa3e587cf5a475f06e949fbe40e67b759dbcee1830e7effbcb172445d4b6bf"

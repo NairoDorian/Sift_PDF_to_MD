@@ -1,0 +1,27 @@
+# build output
+target/
+target-cuda/
+node_modules/
+dist/
+*.tsbuildinfo
+__pycache__/
+*.pyc
+
+# Tauri's generated schemas (rebuilt by every build)
+app/src-tauri/gen/
+
+# the development machine's engine and models folders (chosen in Sift's settings; never committed)
+/engine/
+/models/
+
+# development runtime (pdfium.dll) and run output
+/runtime/
+.sift/
+*.part
+
+# editors and OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db

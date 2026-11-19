@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 512, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<math display=\"block\">BW_{channel} = \\frac{f_{XOSC}}{8 \\cdot (4 + CHANBW \\cdot M) \\cdot 2^{CHANBW \\cdot E}}</math>", "finish_reason": "stop", "tokens": 46, "retries": 0, "error": null}}

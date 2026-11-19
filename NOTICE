@@ -1,0 +1,44 @@
+Sift-PDF-to-MD
+Copyright 2026 the Sift-PDF-to-MD authors.
+
+This project includes code ported to Rust from the following projects, licensed under the
+Apache License, Version 2.0 (http://www.apache.org/licenses/LICENSE-2.0):
+
+surya (https://github.com/datalab-to/surya), version 0.23.0, commit 9d5aadf,
+Copyright Datalab Inc.
+  - crates/sift-core/src/layout/      surya/common/rfdetr (itself a slimmed copy of Roboflow
+                                      RF-DETR, Copyright 2025 Roboflow, Apache-2.0, with code from
+                                      LW-DETR (Baidu), Conditional DETR (Microsoft), DETR (Facebook)
+                                      and HuggingFace transformers' DINOv2 (Meta, HuggingFace)),
+                                      surya/common/order (reading order) and surya/fast_layout
+                                      (detection wrapper, contained-box merging).
+  - crates/sift-core/src/surya/       surya/inference/compact.py, util.py (scale_to_fit),
+                                      parsers.py and merged_cells.py; llama-server flags, request
+                                      format and retry loop from surya/inference/backends.
+  - prompts/surya-2.5/*.txt           surya's prompts, word for word.
+
+marker (https://github.com/datalab-to/marker), version 2.1.0, commit 71dd5fd,
+Copyright Datalab Inc.
+  - crates/sift-core/src/pdf/textlayer.rs   font flags/name -> bold/italic rules.
+  - crates/sift-core/src/pdf/quality.rs     bad-text detection thresholds.
+  - Ideas (not code) for heading levels, list detection, header/footer removal, hyphen joining
+    and reading order from the PDF character stream.
+
+pdftext (https://github.com/datalab-to/pdftext), version 0.7.1, Copyright Datalab Inc.
+  - crates/sift-core/src/pdf/textlayer.rs   character, span and line grouping.
+
+Other ported code:
+  - Pillow (libImaging/Resample.c, LANCZOS resampling) in crates/sift-core/src/imaging.rs:
+    MIT-CMU license, Copyright (c) 1997-2011 Secret Labs AB, (c) 1995-2011 Fredrik Lundh and
+    contributors, (c) 2010 Jeffrey A. Clark and contributors.
+  - ZER0 / Handy (https://github.com/cjpais/Handy): the Job Object pattern
+    (crates/sift-core/src/llm/jobobject.rs), the llama.cpp release handling and the app's
+    structure: MIT, Copyright (c) CJ Pais.
+  - CPython's html.entities table (crates/sift-core/src/surya/entities.rs): PSF License.
+
+Model weights are not part of this repository; Sift downloads them from their own repositories
+into the folder the user chooses, under their own licenses:
+  - surya 2.5 and surya_layout2 (datalab-to on Hugging Face): Datalab's modified OpenRAIL-M.
+  - Gemma 4 E4B (unsloth/gemma-4-E4B-it-qat-GGUF): Gemma terms of use.
+llama.cpp (https://github.com/ggml-org/llama.cpp, MIT) is downloaded as official release builds,
+never bundled.

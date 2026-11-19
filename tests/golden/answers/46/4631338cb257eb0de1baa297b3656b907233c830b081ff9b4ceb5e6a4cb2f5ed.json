@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 512, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<math display=\"block\">B_x, B_y, B_z &lt; 0.75 \\cdot 2400 \\mu T</math><p align=\"center\">Equation 3</p>", "finish_reason": "stop", "tokens": 34, "retries": 0, "error": null}}

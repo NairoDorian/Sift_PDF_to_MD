@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 2148, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<table><thead><tr><th><b>DcFree</b><th><b>Description</b></thead><tbody><tr><td>0x00<td>No whitening<tr><td>0x01<td>Whitening according to <i>SetFskWhiteningParams</i></tbody></table>", "finish_reason": "stop", "tokens": 53, "retries": 0, "error": null}}

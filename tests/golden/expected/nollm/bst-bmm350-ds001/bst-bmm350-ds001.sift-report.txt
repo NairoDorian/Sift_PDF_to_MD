@@ -1,0 +1,18 @@
+Sift report for bst-bmm350-ds001.pdf (2026-11-06 20:52)
+Items Sift could not resolve automatically. Everything else was verified or corrected.
+
+page 1, images/p001-picture-02.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 3
+page 23, images/p023-figure-02.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 1
+page 26, table: PDF text not in surya's table: 'XLSB'
+page 26, table: surya wrote 'XI_SR'; no matching value in the PDF text (kept surya's value)
+page 27, table: surya wrote 'drdy_int_map_to_ibi'; no matching value in the PDF text (kept surya's value)
+page 34, table: surya wrote 'i3c_error_3'; no matching value in the PDF text (kept surya's value)
+page 40, table: PDF text not in surya's table: 'data_st_23_16'
+page 40, table: surya wrote '16'; several close PDF values ['10', '11', '1R', '76'] (kept surya's value)
+page 40, table: surya wrote '23'; several close PDF values ['21', '2R', '32', '43'] (kept surya's value)
+page 40, table: surya wrote 'data'; no matching value in the PDF text (kept surya's value)
+page 46, images/p046-picture-03.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 1
+page 47, table: PDF text not in surya's table: 'Get target’s Provisioned ID'
+page 54, images/p054-diagram-01.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 1, 2, 3, 5, 6
+page 55, table: 34 values surya wrote have no match in the PDF text (kept surya's values; part of the table may be an image): 'One', 'code', 'wafer', 'convert', 'table', '轉換表', '1-digit', '1-digit', '1-digit', '01', '10', '19', '02', '11', '20', '03', '12', '21', '04', '13' and 14 more
+page 55, table: 9 values surya wrote are close to several PDF values (kept surya's): '1' ~ ['C', '•']; '1' ~ ['C', '•']; '2' ~ ['C', '•']; '3' ~ ['C', '•']; '5' ~ ['C', '•']; '6' ~ ['C', '•']; '7' ~ ['C', '•']; '8' ~ ['C', '•']; '9' ~ ['C', '•']

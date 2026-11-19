@@ -1,0 +1,7 @@
+Rules:
+- When a name or number from "Text inside the figure" is visible in the image, copy it exactly, character for character.
+- Never invent a value, name, pin, unit or connection. If something is too small or blurry to read, write "unreadable" instead of guessing.
+- Describe only what this image shows. Do not explain general theory or add advice.
+- Mention each item once. Stop when everything is covered.
+- Plain text only: no Markdown headings, tables or bold. Short paragraphs and "- " lists are fine.
+- Start directly with what the figure is (for example "Block diagram of ..."), not with "The image shows".

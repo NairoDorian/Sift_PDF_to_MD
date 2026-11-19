@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 512, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<math display=\"block\">t_{bit} = \\frac{1}{R_b}</math>", "finish_reason": "stop", "tokens": 17, "retries": 0, "error": null}}

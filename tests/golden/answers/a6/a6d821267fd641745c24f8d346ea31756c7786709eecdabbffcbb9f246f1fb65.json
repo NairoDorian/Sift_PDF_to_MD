@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 2048, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<ol><li>1. CONTROLLING DIMENSIONS ARE IN MILLIMETERS (ANGLES IN DEGREES).</li><li>2. COPLANARITY APPLIES TO THE EXPOSED PAD AS WELL AS THE TERMINALS.</li></ol>", "finish_reason": "stop", "tokens": 67, "retries": 0, "error": null}}

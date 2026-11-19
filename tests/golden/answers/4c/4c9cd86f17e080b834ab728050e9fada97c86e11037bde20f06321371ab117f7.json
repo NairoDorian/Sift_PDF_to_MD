@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 512, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<math display=\"block\">f_{dev} = \\frac{f_{xosc}}{2^{17}} \\cdot (8 + DEVIATION \\_M) \\cdot 2^{DEVIATION \\_E}</math>", "finish_reason": "stop", "tokens": 51, "retries": 0, "error": null}}

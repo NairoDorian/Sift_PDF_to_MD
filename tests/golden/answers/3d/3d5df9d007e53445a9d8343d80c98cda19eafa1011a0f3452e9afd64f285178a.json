@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 2148, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<table border=\"1\"><tr><td><b>i2c_wdt_sel</b><td><td><tr><td>0x00<td>short<td>I2C watch dog time out after 1.28ms<tr><td>0x01<td>long<td>I2C watch dog time out after 40.96ms</table>", "finish_reason": "stop", "tokens": 69, "retries": 0, "error": null}}

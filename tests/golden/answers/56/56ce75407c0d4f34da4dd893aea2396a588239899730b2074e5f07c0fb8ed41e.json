@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 2148, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<table border=\"1\"><tr><td><b>Preamble</b><br/>1 byte (1M PHY)<br/>2 bytes (2M PHY)<td>Access Address<br/>4 bytes<td>PDU<br/>2 to 257<br/>bytes<td>CRC<br/>3 bytes</table>", "finish_reason": "stop", "tokens": 63, "retries": 0, "error": null}}

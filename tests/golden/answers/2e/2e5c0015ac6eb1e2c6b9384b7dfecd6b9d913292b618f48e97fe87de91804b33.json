@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 2148, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<table><thead><tr><th>Name<th>Value<sup>1</sup><th>Unit</thead><tbody><tr><td>Theta j-a, Junction to Ambient<td>26.7<td>°C/W</tbody></table>", "finish_reason": "stop", "tokens": 43, "retries": 0, "error": null}}

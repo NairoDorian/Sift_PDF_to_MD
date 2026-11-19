@@ -1,0 +1,3 @@
+# The code is dense on purpose (ported rules read best on one line); rustfmt keeps it that way.
+max_width = 120
+use_small_heuristics = "Max"

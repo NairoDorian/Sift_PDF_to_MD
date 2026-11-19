@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 2148, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<table border=\"1\"><tr><td><b>cmd</b><td><td><tr><td>0x00<td>nop<td>Reserved. No command.<tr><td>0xb6<td>softreset<td>Configuring this command will trigger a power on reset</table>", "finish_reason": "stop", "tokens": 54, "retries": 0, "error": null}}

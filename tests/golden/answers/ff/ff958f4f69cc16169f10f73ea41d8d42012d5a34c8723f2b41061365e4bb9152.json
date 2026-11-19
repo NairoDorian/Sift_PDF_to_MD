@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 512, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<math display=\"block\">f_{carrier} = \\frac{f_{XOSC}}{2^{16}} \\cdot (FREQ + CHAN \\cdot ((256 + CHANSPC\\_M) \\cdot 2^{CHANSPC\\_E-2}))</math>", "finish_reason": "stop", "tokens": 63, "retries": 0, "error": null}}

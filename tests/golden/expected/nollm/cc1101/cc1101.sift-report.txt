@@ -1,0 +1,37 @@
+Sift report for cc1101.pdf (2026-11-06 20:52)
+Items Sift could not resolve automatically. Everything else was verified or corrected.
+
+page 1, images/p001-diagram-01.png: please check these description numbers, not found in the figure's PDF text: 6, 7, 8, 9, 10, 16, 17, 18, 19, 20
+page 11, images/p011-figure-01.png: please check these description numbers, not found in the figure's PDF text: 4, 4.1
+page 12, table: structure doesn't match the PDF layout well (75% consistent)
+page 14, images/p014-figure-01.png: please check these description numbers, not found in the figure's PDF text: 15, 35, 52, 68
+page 15, images/p015-figure-01.png: please check these description numbers, not found in the figure's PDF text: 45, 65, -15
+page 15, images/p015-figure-02.png: please check these description numbers, not found in the figure's PDF text: 55, -15
+page 15, images/p015-figure-03.png: please check these description numbers, not found in the figure's PDF text: 35, 45, -15
+page 16, table: surya wrote '50Ω'; no matching value in the PDF text (kept surya's value)
+page 19, table: PDF text not in surya's table: 'XOSC'
+page 19, table: surya wrote 'Fx0sc/216'; no matching value in the PDF text (kept surya's value)
+page 20, images/p020-figure-01.png: please check these description numbers, not found in the figure's PDF text: 26
+page 30, images/p030-figure-01.png: please check these description numbers, not found in the figure's PDF text: 4, 10
+page 42, images/p042-figure-01.png: please check these description numbers, not found in the figure's PDF text: 2, 4, 0.5
+page 45, images/p045-figure-01.png: please check these description numbers, not found in the figure's PDF text: 23, 31, -25, -105, -115
+page 49, images/p049-diagram-01.png: please check these description numbers, not found in the figure's PDF text: 4
+page 54, table: 9 values surya wrote have no match in the PDF text (kept surya's values; part of the table may be an image): '1953/fXOSC', '1953/fXOSC', '1954/fXOSC', '1953/fXOSC', '782/fXOSC', '782/fXOSC', '2/fXOSC', '2/fXOSC', '283/fXOSC'
+page 54, table: PDF text not in surya's table: 'xosc', 'xosc', 'xosc', 'xosc', 'xosc', 'xosc', 'xosc', 'xosc'
+page 55, table: surya wrote 'fxOSc'; no matching value in the PDF text (kept surya's value)
+page 60, table: PDF text not in surya's table: 'Default', 'Setting'
+page 61, images/p061-figure-02.png: please check these description numbers, not found in the figure's PDF text: 8
+page 62, table: PDF text not in surya's table: 'LNA_PD.'
+page 70, table: PDF text not in surya's table: 'R/W con', 'fi', 'gu', 'ti', 'on', 'eg', 's, bu', 'access poss'
+page 76, table: surya wrote '4'; several close PDF values ['E', 'M', '_', 'a', 'f'] (kept surya's value)
+page 85, table: PDF text not in surya's table: '2 (10)', '2 highest gain settings can not be used', '3 (11)', 'The 3 highest gain settings can not be used', 'Approx. 6.1 dB below maximum possible gain', 'Approx. 7.4 dB below maximum possible gain', 'Approx. 9.2 dB below maximum possible gain', 'Approx. 11.5 dB below maximum possible gain'
+page 88, table: surya wrote 'Fxosc/750'; no matching value in the PDF text (kept surya's value)
+page 89, table: PDF text not in surya's table: 'index to use when transmitting a ‘1’.', 'when transmitting a ‘0’. The'
+page 89, table: surya wrote 'I0*'; no matching value in the PDF text (kept surya's value)
+page 101, images/p101-diagram-01.png: please check these description numbers, not found in the figure's PDF text: 1
+page 102, images/p102-picture-01.png: please check these description numbers, not found in the figure's PDF text: 1
+page 103, images/p103-diagram-01.png: please check these description numbers, not found in the figure's PDF text: 1
+page 104, images/p104-diagram-01.png: please check these description numbers, not found in the figure's PDF text: 1
+page 105, images/p105-picture-01.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 4, 0.5
+page 110, images/p110-diagram-02.png: please check these description numbers, not found in the figure's PDF text: 1
+page 111, images/p111-diagram-01.png: please check these description numbers, not found in the figure's PDF text: 2, 3, 7, 8, 9, 12, 13, 14, 17, 18, 19

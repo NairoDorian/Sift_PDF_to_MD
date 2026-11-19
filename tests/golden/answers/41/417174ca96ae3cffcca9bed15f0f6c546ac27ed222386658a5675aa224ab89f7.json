@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 512, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<p>The Distance [m] = <math>Rn_g f^* 150/(2^{12} BWLoRa)</math>, with BWLoRa in MHz.</p>", "finish_reason": "stop", "tokens": 44, "retries": 0, "error": null}}

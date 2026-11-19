@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 512, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<math display=\"block\">PER = 1 - (1 - BER)^{packet\\_length}</math>", "finish_reason": "stop", "tokens": 27, "retries": 0, "error": null}}

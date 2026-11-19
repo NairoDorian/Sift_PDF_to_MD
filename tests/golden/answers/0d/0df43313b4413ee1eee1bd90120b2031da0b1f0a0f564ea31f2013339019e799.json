@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 512, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<math display=\"block\">n_{uncoded} = n_{AGCPreamble} + n_{Preamble} + n_{SyncWord} + n_{header}</math>", "finish_reason": "stop", "tokens": 46, "retries": 0, "error": null}}

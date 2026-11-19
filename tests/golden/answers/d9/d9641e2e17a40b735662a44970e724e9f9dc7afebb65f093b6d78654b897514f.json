@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 2048, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<p>Marking for the 5 x 5mm MLPQ 32 Lead package:</p>", "finish_reason": "stop", "tokens": 21, "retries": 0, "error": null}}

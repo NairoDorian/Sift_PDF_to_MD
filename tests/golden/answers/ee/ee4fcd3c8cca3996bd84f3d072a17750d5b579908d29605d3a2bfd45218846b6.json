@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 512, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<math display=\"block\">t_{Event0} = \\frac{750}{f_{XOSC}} \\cdot EVENT0 \\cdot 2^{5.WOR\\_RES}</math>", "finish_reason": "stop", "tokens": 41, "retries": 0, "error": null}}

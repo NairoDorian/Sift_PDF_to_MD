@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 2148, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<table><thead><tr><th><b>Product name</b><th><b>Package</b><th><b>Marking</b><th><b>Ordering code</b></thead><tbody><tr><td>IM73A135V01<td>PG-LLGA-5-2<td>I73A03<td>SP003803274</tbody></table>", "finish_reason": "stop", "tokens": 63, "retries": 0, "error": null}}

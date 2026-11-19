@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 512, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<math display=\"block\">\\text{Temperature} = \\left( \\text{Vanax} \\frac{\\text{Raw}(12:0)}{8192} - \\text{Vbe25} \\right) \\times \\frac{1000}{\\text{VbeSlope}} + 25</math>", "finish_reason": "stop", "tokens": 58, "retries": 0, "error": null}}

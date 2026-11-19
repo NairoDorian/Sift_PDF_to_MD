@@ -1,0 +1,16 @@
+# Every text file is stored and checked out with LF, whatever core.autocrlf says: the golden
+# test compares Markdown byte for byte and the answer-store keys hash prompt text.
+* text=auto eol=lf
+
+# Windows batch files need CRLF.
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# The golden set is compared byte for byte: never convert it.
+tests/golden/** -text
+
+# Binary files.
+*.png binary
+*.ico binary
+*.icns binary
+*.pdf binary

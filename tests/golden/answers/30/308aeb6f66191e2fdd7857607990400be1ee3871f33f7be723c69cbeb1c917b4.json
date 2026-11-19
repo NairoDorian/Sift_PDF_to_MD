@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 512, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<math display=\"block\">B_{-20\\text{dB}} = 2\\Delta f + R_b + \\text{freqoffset}</math>", "finish_reason": "stop", "tokens": 29, "retries": 0, "error": null}}

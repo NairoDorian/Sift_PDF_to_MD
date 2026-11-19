@@ -1,0 +1,14 @@
+Sift report for infineon-im73a135-IM73A135V01XTSA1.pdf (2026-11-06 20:51)
+Items Sift could not resolve automatically. Everything else was verified or corrected.
+
+page 4, images/p004-figure-01.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 25, 2.75, 30000
+page 4, images/p004-figure-02.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 25, -120, -125, 2.75
+page 4, images/p004-figure-03.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 25, 2.75
+page 4, images/p004-figure-04.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 25, 2.75
+page 4, images/p004-figure-05.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 25, 2.75
+page 4, images/p004-figure-06.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 25, 2.75
+page 5, images/p005-figure-01.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 65, 70, 90, 95, 105
+page 7, images/p007-figure-01.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 0, 1, 3, 9, -1, -4
+page 10, table: surya wrote 'PSRRInBand_LP'; no matching value in the PDF text (kept surya's value)
+page 10, table: surya wrote 'PSRRInBand_NP'; no matching value in the PDF text (kept surya's value)
+page 16, table: surya wrote 'J-STD-020D-01'; no matching value in the PDF text (kept surya's value)

@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 512, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<math display=\"block\">\\text{Vbat}(V) = \\left( 5x \\frac{\\text{Raw}(12:0)}{8192} - 1 \\right) \\text{xvana}(v)</math>", "finish_reason": "stop", "tokens": 44, "retries": 0, "error": null}}

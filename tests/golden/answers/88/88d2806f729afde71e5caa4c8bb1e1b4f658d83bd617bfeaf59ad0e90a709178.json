@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 2148, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<table border=\"1\"><thead><tr><th><b>I2C address</b><th><b>OTP content</b><th><b>ADSEL</b></thead><tbody><tr><td>0x14<td>0<td>LOW<tr><td>0x15<td>0<td>HIGH</tbody></table>", "finish_reason": "stop", "tokens": 47, "retries": 0, "error": null}}

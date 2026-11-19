@@ -1,0 +1,116 @@
+# What Sift's development measured
+
+The lessons that still shape the code, newest section last. Machine: i9-13900H, 32 GB RAM,
+RTX 4070 Laptop 8 GB, Windows 11. Reference set: seven datasheets (515 pages) from
+`PROJECTS\SLAB\DATASHEET_TRUTH_SOURCE_HARDWARE`, with the user's marker outputs as the reference
+to beat.
+
+## Process
+
+- Don't start the next change while a long run is going: read its trace and server logs first
+  (`<out>\.sift\logs\<stamp>-sift-trace.jsonl`: every model request with tokens, seconds, retries).
+- Measure every change on all reference documents, per line and per table; compare tables parsed,
+  never as raw strings. The golden test (`docs/GOLDEN.md`) makes A/B comparisons exact.
+- When a local model's answers are unstable, check its runtime settings (sampling, thinking,
+  prompt cache) against the user's tuned launchers (`PROJECTS\Llama.cpp`) before writing prompt
+  workarounds.
+
+## Text layer (pdfium + pdftext's algorithm)
+
+- pdfium pages must be closed explicitly, under one lock: a page left to a garbage collector was
+  closed at a random moment through the form environment and crashed on the 250-page LR20xx.
+- Space characters get bogus boxes: span and line boxes come from non-space characters only;
+  lines are matched to layout boxes by horizontal extent x vertical middle band.
+- Superscripts: a smaller, raised fragment on the same row is merged back into its line; the flag
+  is kept only when the span is clearly smaller and raised above its neighbours.
+- A bullet glyph without a Unicode mapping comes out as a leading space: a reliable list signal.
+- The document decides: line-end hyphens and wrapped names are joined from the document's own
+  vocabulary (`appli-` + `cations` joins, `on-chip` stays), never from word lists.
+- Tables and figures are often drawn after the body text in the character stream: they are
+  placed by their position on the page.
+
+## Layout (surya's rf-detr)
+
+- rf-detr often gives a Text box and a SectionHeader box over the same line: lines go to the more
+  specific label; an empty duplicate box is dropped.
+- In Rust (candle): 0.80 s/page on one thread; candle's element-wise ops are single-threaded, so
+  pages run in parallel, one thread each (0.28 s/page on the CPU). On the GPU (candle CUDA,
+  `scripts/build-cuda.cmd`): 68 ms/page. The CUDA build needs the toolkit 13.4 (cudarc 0.19 doesn't
+  know 13.5), MSVC with `/Zc:preprocessor`, and no `/MD` C dependency (candle's kernels use the
+  static C runtime: LNK2038).
+- rf-detr's scores differ in the 3rd decimal between CPU and GPU: a box at the 0.4 threshold can
+  flip. The golden test replays stored layouts for that reason.
+
+## surya 2.5 on llama.cpp
+
+- Q8_0 = BF16 output on the test tables, 1.3x faster, 0.5 GB less. 6 slots = 0.50 s/table (4 =
+  0.59, 8 = no better).
+- Not byte-repeatable with several slots (batching changes floating-point results); after
+  parsing, 48/48 tables identical run to run.
+- No speculative decoding: the GGUF has no MTP head; n-gram drafting measured no faster.
+- surya reads figures natively (`<p class="img-text">` with the labels): its labels are given to
+  Gemma as "text inside the figure" (misread labels per figure 0.71 -> 0.25).
+- Every table goes to surya and every value is checked against the PDF (marker's text-layer table
+  rebuild let structurally wrong tables through at its 0.75 threshold). On LR20xx 99.58 % of
+  surya's checked table tokens match the PDF exactly (15,579 of 15,644); the rest are corrected
+  from the PDF, none left unresolved.
+- The table check: the unique closest PDF candidate wins; 2-3 neighbouring PDF words are joined
+  (`32.0 ± 0.30`); words stacked in one column are joined (wrapped names); a value failing alone
+  is retried joined with its neighbour by `_`, nothing or `-` (`start time` -> `start_time(31:0)`).
+
+## Gemma 4 E4B
+
+- MTP drafter with images: 1.5x faster, 60-90 % draft acceptance, same answers.
+- Thinking is what made heading levels robust: 13/23 -> 23/23 on LR20xx; the answer still follows
+  the JSON schema. Cost ~10 s per request; on for heading levels and table merges.
+- llama-server's prompt cache made identical requests answer differently after other requests
+  warmed it: `cache_prompt: false` on structured requests.
+- 8192 tokens per slot cost +34 MiB over 4096 (Gemma 4 shares and windows its KV cache).
+- Descriptions: 88.9 % (LR20xx) and 68.5 % (Wio) of the numbers in them are confirmed by the
+  figure's own text; the rest are read off curves (backlog: grounding).
+- Table reviews accepted 0 of 5 corrections on the digital datasheets (the guards refuse anything
+  not in the PDF): on verified pages they cost time and change nothing (backlog: measure on scans).
+
+## Speed
+
+- Two llama-servers on one 8 GB GPU time-slice: one after the other is faster (281 s vs 288 s on
+  LR20xx) and needs 2.2 GB instead of 5.8 GB. Default: surya, then Gemma.
+- A model with no work is never started; a server stops 1 s after its last answer (a 5 s grace
+  waited for a stop signal that never came in a console-less run).
+- Layout runs batch by batch so surya gets its first tables after 8 pages.
+- Cold, LLM pass on: LR20xx (250 pages) 355 s (surya 184 s, Gemma 159 s), Wio (23 pages) 86 s.
+
+## Quality against marker (scorecard v2, errors per 1,000 PDF words, lower is better)
+
+| | Sift | marker |
+|---|---|---|
+| LR20xx | 46.76 | 56.13 |
+| Wio | 121.52 | 136.38 |
+
+Sift is ahead on all seven reference datasheets: table values (marker's LLM rewrite invented cells
+on LR20xx p43/p64), identifiers (`SetLoRaSynchTimeout`), heading outline, list items, descriptions
+(marker's online model invented figure titles and values).
+
+## The Rust port (2026-11-06/07)
+
+- Ported against the Python version as an oracle: every stage and every model answer recorded,
+  then replayed. Text layer: 0 differences in 941,838 characters; renders 515/515 pixel-identical;
+  Markdown + reports 7/7 byte-identical. That recorded run is today's golden set.
+- What mattered for identical output: Pillow's LANCZOS runs the vertical pass first when the
+  height shrinks more than twice as much as the width (21 % of surya crops differed by one grey
+  level without it); Python's `$` before a final newline, `\w` including `²`, `strip()` including
+  `\x1c-\x1f`, `round()` ties to even, `max()` returning the first maximum; prompt files read with
+  universal newlines (they are CRLF on disk).
+- The Markdown is written with LF line endings.
+
+## One OCR model (2026-11-15)
+
+Other OCR models were tried as checkers of surya's reading (2026-11-07, every page read as a
+scan): 1-6 % fewer errors on most documents, one document worse, for 3-5x the time; none was
+better than surya alone. Decision (user): surya 2.5 + Gemma 4 E4B only.
+
+## The engine
+
+- Official Windows CUDA builds of llama.cpp moved from CUDA 13.4 to 13.5 around b12174; the
+  NVIDIA driver here supports 13.5. GitHub's anonymous API allows 60 requests an hour: the engine
+  falls back to the releases feed and the release page.

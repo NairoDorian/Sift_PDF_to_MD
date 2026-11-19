@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 2148, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<table><tr><th>Byte<th>0<th>1<th>2<th>3<tr><td>Data from Host<td>0x00<td>0x00<td>0x00<td>0x00<tr><td>Data to Host<td>Stat(15:8)<td>Stat(7:0)<td>Rssi(8:1)<td>Rssi(0)<br/>rfu(6:0)</table>", "finish_reason": "stop", "tokens": 87, "retries": 0, "error": null}}

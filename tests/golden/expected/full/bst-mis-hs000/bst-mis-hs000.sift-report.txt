@@ -1,0 +1,12 @@
+Sift report for bst-mis-hs000.pdf (2026-11-06 21:59)
+Items Sift could not resolve automatically. Everything else was verified or corrected.
+
+page 9, images/p009-diagram-01.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 1
+page 11, images/p011-diagram-01.png: please check these description numbers, not found in the figure's PDF text: 30
+page 14, images/p014-diagram-01.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 1, 7
+page 15, images/p015-diagram-01.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 1
+page 15, images/p015-diagram-03.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 1
+page 15, images/p015-picture-02.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 1
+page 17, images/p017-picture-02.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 7, 7.5
+page 19, images/p019-diagram-01.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 11, 11.1
+page 19, images/p019-diagram-02.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 1, 11, 11.1

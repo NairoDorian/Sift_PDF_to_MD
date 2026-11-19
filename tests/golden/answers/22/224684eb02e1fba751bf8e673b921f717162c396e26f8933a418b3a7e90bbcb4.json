@@ -1,0 +1,1 @@
+{"role": "gemma-classify", "max_tokens": 8, "extra": "", "prompt": "What kind of figure is this? Answer with exactly one of: block diagram, schematic, pinout, package drawing, graph, chart, timing diagram, photo, other.", "answer": {"kind": "block_diagram"}}

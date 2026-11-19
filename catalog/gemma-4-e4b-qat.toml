@@ -1,0 +1,27 @@
+# Gemma 4 E4B QAT (Google; Unsloth's GGUF): describes the figures and runs the LLM pass
+# (heading levels, split tables, missing formulas, unverified tables). Server flags and
+# sampling live in crates/sift-core/src/brain and the settings' [gemma] section.
+id = "gemma-4-e4b-qat"
+name = "Gemma 4 E4B (QAT, Unsloth UD-Q4_K_XL)"
+role = "image descriptions and the LLM pass"
+maker = "Google (GGUF: Unsloth)"
+license = "Gemma terms"
+repo = "unsloth/gemma-4-E4B-it-qat-GGUF"
+revision = "8c5a9e4fd5482e2be20fe0bf013b4c262a8f4265"
+folder = "gemma-4-E4B-it-qat-GGUF"
+
+[[files]]
+file = "gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf"
+size = 4215695776
+sha256 = "df0fd4ee07072c607c29a0a1cb4f98918426cca12f45a2776bdd6ee6d09a4de3"
+
+[[files]]
+file = "mmproj-F16.gguf"
+size = 990372672
+sha256 = "6a255159ee4b01b304f633a57f017dd7d5a69d30fff52abb2614bf0813cef034"
+
+# MTP drafter: measured 1.5x faster with images and the same answers (V0)
+[[files]]
+file = "mtp-gemma-4-E4B-it.gguf"
+size = 59678016
+sha256 = "423074e537504b4f9ec5eafed5c639fac82c96631626efccacdd3c4039b20605"

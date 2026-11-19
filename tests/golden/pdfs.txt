@@ -1,0 +1,8 @@
+# The golden documents: <stem>|<path under SIFT_GOLDEN_PDFS> (docs/GOLDEN.md)
+infineon-im73a135-IM73A135V01XTSA1|MIC - IM73A135/infineon-im73a135-IM73A135V01XTSA1.pdf
+bst-mis-hs000|IMU - BMI423/bst-mis-hs000.pdf
+bst-bmm350-hs000|MAG - BMM350/bst-bmm350-hs000.pdf
+bst-bmm350-ds001|MAG - BMM350/bst-bmm350-ds001.pdf
+cc1101|RF REMOTE - CC1101/cc1101.pdf
+Wio-LR2021 Module Datasheet|LORA - LR2021/Wio-LR2021/Wio-LR2021 Module Datasheet.pdf
+63293790.LR20xxDatasheet_V2_2|LORA - LR2021/63293790.LR20xxDatasheet_V2_2.pdf

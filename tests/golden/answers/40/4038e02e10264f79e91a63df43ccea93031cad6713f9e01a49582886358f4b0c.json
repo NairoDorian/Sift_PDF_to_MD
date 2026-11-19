@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 2148, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<table border=\"1\"><thead><tr><th>Bit<th>Field Name<th>Reset<th>R/W<th>Description</thead><tbody><tr><td>7:0<td>TIME[7:0]<td><td>R<td>Low byte of timer value in WOR module</tbody></table>", "finish_reason": "stop", "tokens": 54, "retries": 0, "error": null}}

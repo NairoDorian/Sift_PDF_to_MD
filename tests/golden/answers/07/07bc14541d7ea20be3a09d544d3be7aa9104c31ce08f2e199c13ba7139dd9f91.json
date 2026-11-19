@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 512, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<math display=\"block\">f_{IF} = \\frac{f_{XOSC}}{2^{10}} \\cdot FREQ \\_IF</math>", "finish_reason": "stop", "tokens": 28, "retries": 0, "error": null}}

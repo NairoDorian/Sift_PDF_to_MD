@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "The main window: core events and Sift's own commands (folder pickers run from Rust).",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

@@ -1,0 +1,25 @@
+[package]
+name = "sift-app"
+description = "Sift desktop app (Tauri 3 + SolidJS 2): the same binary runs headless with a subcommand"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "sift-app"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "3.0.0-alpha.4", features = [] }
+
+[dependencies]
+sift-core = { path = "../../crates/sift-core" }
+sift-cli = { path = "../../crates/sift-cli" }
+tauri = { version = "3.0.0-alpha.6", features = [] }
+tauri-runtime-wry = "3.0.0-alpha.6"
+# folder pickers (engine and models folders); Tauri's own plugins-workspace, v3 branch (as ZER0)
+tauri-plugin-dialog = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v3" }
+serde.workspace = true
+serde_json.workspace = true
+anyhow.workspace = true
+toml.workspace = true

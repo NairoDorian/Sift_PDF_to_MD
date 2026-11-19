@@ -1,0 +1,1 @@
+{"role": "surya", "max_tokens": 512, "extra": "", "prompt": "OCR this block image to HTML.", "answer": {"text": "<math display=\"block\">\\sqrt{B_x^2 + B_y^2 + B_z^2} \\quad \\cdot TC_{\\text{magnet}} &lt; 200 \\mu\\text{T} \\cdot 0.2\\%/\\text{K}</math>", "finish_reason": "stop", "tokens": 61, "retries": 0, "error": null}}
