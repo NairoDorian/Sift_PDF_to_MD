@@ -8,7 +8,7 @@ a fork of Handy); the lessons copied from it are marked "(ZER0)" below.
 
 Repository: <https://github.com/NairoDorian/Sift_PDF_to_MD> (public, Apache-2.0). Everything lives
 at the repository root (until 2026-11-19 it lived in a `V1/` folder; code comments still say V0
-for the first, Python version and V1 for this Rust version: [HISTORY.md](HISTORY.md)).
+for the first, Python version and V1 for this Rust version).
 
 - The plan (living, kept current): [MASTER_PLAN.md](MASTER_PLAN.md)
 - How the pipeline works today: [CURRENT_ARCHITECTURE.md](CURRENT_ARCHITECTURE.md)
@@ -115,7 +115,7 @@ with their sha256).
 
 ```
 Sift_PDF_to_MD/
-  README.md  HISTORY.md  AGENTS.md  MASTER_PLAN.md  CURRENT_ARCHITECTURE.md  LICENSE  NOTICE
+  README.md  AGENTS.md  MASTER_PLAN.md  CURRENT_ARCHITECTURE.md  LICENSE  NOTICE
   Cargo.toml            workspace (versions in [workspace.dependencies], kept newest by update-deps)
   crates/sift-core/     everything that converts (module map below)
   crates/sift-cli/      the `sift` command line (also run by the app binary when given a subcommand)

@@ -1,8 +1,7 @@
 # Sift: Master Plan
 
 The living plan of Sift: updated as development goes (last update 2026-11-19). How the code works
-today is in `CURRENT_ARCHITECTURE.md`; what was measured is in `docs/LEARNINGS.md`; how the
-project started is in `HISTORY.md`.
+today is in `CURRENT_ARCHITECTURE.md`; what was measured is in `docs/LEARNINGS.md`.
 
 **What Sift is.** A local Windows app with a command line that turns PDFs (one file or a folder)
 into Markdown: text, headings, lists, tables, formulas, every image kept at 300 DPI with a written
@@ -72,7 +71,7 @@ Next: the audit (`docs/AUDIT.md`), then section 11.
 | What | Path |
 |---|---|
 | Repository | `PROJECTS\Sift-PDF-to-MD\` = <https://github.com/NairoDorian/Sift_PDF_to_MD> (`main`) |
-| This plan, the architecture, the guide, the history | `MASTER_PLAN.md`, `CURRENT_ARCHITECTURE.md`, `AGENTS.md`, `HISTORY.md` |
+| This plan, the architecture, the guide | `MASTER_PLAN.md`, `CURRENT_ARCHITECTURE.md`, `AGENTS.md` |
 | Engine and models on the development machine | `engine\`, `models\` at the repository root (git-ignored; set in the settings file, changeable in the app) |
 | Settings file | `%APPDATA%\com.nairodorian.sift\settings.toml` (`sift config path`) |
 | Golden set | `tests\golden\` (`docs/GOLDEN.md`) |
@@ -194,7 +193,7 @@ verify, delete, revision check). Long work runs on its own thread and reports th
 
 ```
 Sift_PDF_to_MD/
-  README.md  HISTORY.md  AGENTS.md  MASTER_PLAN.md  CURRENT_ARCHITECTURE.md  LICENSE  NOTICE
+  README.md  AGENTS.md  MASTER_PLAN.md  CURRENT_ARCHITECTURE.md  LICENSE  NOTICE
   .gitignore  .gitattributes
   Cargo.toml  Cargo.lock                   workspace
   crates/sift-core/                        the converter (module map: AGENTS.md)
@@ -441,8 +440,8 @@ the text layer).
 **Answered by the user:**
 - **2026-11-19:** flatten `V1/` into the repository root; open source on GitHub
   (`NairoDorian/Sift_PDF_to_MD`); update every dependency one last time, then a full audit and
-  code review; carry ZER0's lessons (rtk, `bun run tauri dev`, the routine) into `AGENTS.md`; write
-  the project's history (`HISTORY.md`).
+  code review; carry ZER0's lessons (rtk, `bun run tauri dev`, the routine) into `AGENTS.md`; the
+  project's origin stays a short note in `README.md` (no separate history file).
 - **2026-11-16:** the engine and models folders on this machine are `V1\engine` and `V1\models`
   (since 2026-11-19: `engine\` and `models\` at the repository root)
   (git-ignored); the settings file lives in the app's config folder; overwrite and remove

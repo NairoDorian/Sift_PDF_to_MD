@@ -8,9 +8,9 @@ description of every figure, and a short report of anything it could not verify.
 technical documents full of tables, register maps, formulas and diagrams, where a wrong number is
 worse than a missing one.
 
-It began as the simplest possible job, converting a PDF to Markdown so an AI can read it, and
-was started from scratch when marker grew too heavy for that job. The story is in
-[HISTORY.md](HISTORY.md).
+It began as the simplest possible job: converting a PDF to Markdown so an AI can read it. marker
+did that for a while, but grew heavy (Docker, a large Python stack, an online model for the best
+results), so Sift started over from scratch: simple, accurate, fast and local.
 
 Two models do the work, on your GPU, through official llama.cpp builds:
 - **surya 2.5** reads what the PDF's text layer can't give: tables, formulas, scanned or broken
