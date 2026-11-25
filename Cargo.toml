@@ -14,7 +14,7 @@ rust-version = "1.99"
 anyhow = "1.0.105"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1.0.154", features = ["preserve_order"] }
-sha2 = "0.11.1"
+sha2 = "0.11.2"
 libloading = "0.9.1"
 png = "0.18.1"
 regex = "1.13.2"
