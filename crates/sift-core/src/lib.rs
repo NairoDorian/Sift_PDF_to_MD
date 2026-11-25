@@ -12,6 +12,7 @@
 //! - `models`     the three pinned models in the user's models folder
 //! - `pipeline`, `batch`  one PDF, a folder of PDFs; `render`: Markdown
 //! - `answers`    the answer store (golden test, re-runs); `config`, `paths`, `events`
+//! - `meters`     CPU, RAM, GPU and VRAM for the window's footer (Windows and NVIDIA's driver library)
 //! - `py`, `imaging`, `util`  Python-compatible text semantics, images, helpers
 
 pub mod answers;
@@ -25,6 +26,7 @@ pub mod events;
 pub mod imaging;
 pub mod layout;
 pub mod llm;
+pub mod meters;
 pub mod models;
 pub mod paths;
 pub mod pdf;

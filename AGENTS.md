@@ -175,6 +175,7 @@ Sift_PDF_to_MD/
 | `engine` | official llama.cpp builds in the engine folder: release list, check, download, extract, verify, switch, list, use, rollback, remove, CUDA runtime handling | ZER0 `llama_releases.rs` |
 | `models` | the three pinned models: status, resumable sha256-checked downloads, verify, delete, upstream revision check | |
 | `events` | JSONL / human progress events (`docs/events.md`) | |
+| `meters` | the footer's CPU, RAM, GPU and VRAM: Windows' `GetSystemTimes` / `GlobalMemoryStatusEx`, NVIDIA's `nvml.dll` by its full path through libloading (no new dependency) | ZER0 `system_monitor.rs` |
 | `pipeline`, `batch` | one PDF: text -> layout batches -> blocks -> queued surya jobs -> answers applied **in submission order** -> Gemma -> clean-up -> Markdown + report; folder mode | |
 
 ### Key patterns

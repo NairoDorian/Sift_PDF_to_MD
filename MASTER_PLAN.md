@@ -391,8 +391,11 @@ the text layer).
 2. **Window, ZER0 parity**: done 2026-11-25: each llama-server's log, followed live, and its
    command line (read-only, Copy) on the Engine page; the pre-commit gate (`scripts/precommit.ts`,
    `.githooks/`: format, clippy with warnings as errors, unit tests, typecheck, production build,
-   workflow files; `--full` adds the release build and the golden test). Still open: footer
-   meters (CPU, RAM, GPU, VRAM) without a new dependency; typed commands with tauri-specta.
+   workflow files; `--full` adds the release build and the golden test); the footer's meters
+   (CPU, RAM, GPU, VRAM) without ZER0's two dependencies: Windows' own calls and the driver's
+   `nvml.dll` through libloading, one thread that samples once a second only while the window
+   shows. Not taken: typed commands with tauri-specta (its newest, 2.0.0-rc.29 of 2026-11-13,
+   needs Tauri 2; Sift is on Tauri 3): the command types stay hand-written in `lib/api.ts`.
 3. **Window check**: the first-run flow on a fresh settings file (`SIFT_SETTINGS`), 2026-11-25:
    Setup 0/4, both folders, llama.cpp installed into an empty folder, models found in a chosen
    folder, "Everything is in place". Still to do: the models downloaded into an empty folder,

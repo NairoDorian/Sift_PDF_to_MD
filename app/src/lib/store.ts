@@ -6,6 +6,7 @@ import {
   on,
   type DoneEvent,
   type EngineCheck,
+  type Meters,
   type EngineStatus,
   type InputInfo,
   type ModelProgress,
@@ -94,6 +95,8 @@ export function log(level: Level, kind: string, text: string) {
 // ---- model servers (the footer, the Engine page) ----------------------------------------------
 
 export const [servers, setServers] = createSignal<Record<string, string>>({});
+/** The machine's load (the footer), pushed by the app once a second while the window shows. */
+export const [meters, setMeters] = createSignal<Meters | null>(null);
 /** The output folder of this session's latest job: where its servers' logs are (`.sift\logs`). */
 export const [lastOutput, setLastOutput] = createSignal<string | null>(null);
 
@@ -525,6 +528,7 @@ export const toggleSidebar = () => setSidebarCollapsed(!collapsed());
 export function start() {
   on<SiftEvent>("sift-event", onSiftEvent);
   on<DoneEvent>("sift-done", onSiftDone);
+  on<Meters>("meters", setMeters);
   on<{ message: string }>("engine-log", (e) => engineLine(e.message));
   on<{ done: number; total: number }>("engine-progress", (e) => setDownload(e));
   on<{ ok: boolean; error?: string; message?: string }>("engine-done", (e) => {

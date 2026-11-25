@@ -267,6 +267,21 @@ export async function runDemo(h: DemoHooks) {
   const motion = params.get("motion");
   if (motion === "on" || motion === "off") document.documentElement.dataset.motion = motion;
   if (params.has("sidebar")) h.setSidebarCollapsed(params.get("sidebar") === "collapsed");
+  // the footer's meters, as the app pushes them once a second (a running job loads the GPU)
+  const meters = () => {
+    const busy = demo === "running";
+    emit("meters", {
+      cpu: 8 + Math.random() * (busy ? 40 : 10),
+      ram_used_mb: 15100 + Math.random() * 300,
+      ram_total_mb: 32394,
+      gpu_name: "NVIDIA GeForce RTX 4070 Laptop GPU",
+      gpu: busy ? 70 + Math.random() * 28 : Math.random() * 6,
+      vram_used_mb: busy ? 6900 + Math.random() * 300 : 1650,
+      vram_total_mb: 8188,
+    });
+  };
+  meters();
+  setInterval(meters, 1000);
   await wait(200);
   const page = params.get("page");
   if (page) h.setPage(page as Parameters<DemoHooks["setPage"]>[0]);

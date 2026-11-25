@@ -236,6 +236,17 @@ footer.status {
 footer.status .sep { color: var(--hairline-strong); }
 footer.status .grow { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 footer.status button.link { font-size: 12px; }
+/* the machine's load (ZER0's meters): label, a short bar, the percent */
+footer.status .meters { display: flex; align-items: center; gap: 10px; }
+footer.status .meter { display: inline-flex; align-items: center; gap: 4px; }
+footer.status .meter-label { font: 10px/1 var(--font-mono); letter-spacing: 0.08em; opacity: 0.75; }
+footer.status .meter-bar { width: 32px; height: 6px; background: var(--hairline); overflow: hidden; }
+footer.status .meter-bar i { display: block; height: 100%; background: var(--accent-fill); transition: width 0.5s; }
+footer.status .meter-bar i.warn { background: var(--warn); }
+footer.status .meter-bar i.hot { background: var(--error); }
+footer.status .meter-value { width: 4ch; text-align: right; font: 10px/1 var(--font-mono); }
+/* a narrow window keeps the stage text: the meters go first */
+@media (max-width: 1100px) { footer.status .meters, footer.status .meters + .sep { display: none; } }
 
 /* ---- primitives ---------------------------------------------------------------------------- */
 
@@ -655,7 +666,8 @@ table.list td.actions .btn + .btn { margin-left: 6px; }
   :root:not([data-motion="on"]) .running .feed { animation: none; opacity: 0; }
   :root:not([data-motion="on"]) .running .glyph { animation-duration: 3.4s; }
   :root:not([data-motion="on"]) .running .doc-glyph .scan { animation-duration: 3.2s; }
-  :root:not([data-motion="on"]) .sidebar { transition: none; }
+  :root:not([data-motion="on"]) .sidebar,
+  :root:not([data-motion="on"]) footer.status .meter-bar i { transition: none; }
 }
 :root[data-motion="off"] *,
 :root[data-motion="off"] *::before,

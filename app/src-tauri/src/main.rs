@@ -515,6 +515,31 @@ async fn about_info() -> Value {
     })
 }
 
+/// The footer's meters (ZER0's `system_monitor.rs`): one thread for the app's lifetime, a sample
+/// a second while the window shows, one event each; while it is hidden or minimized only a 3 s
+/// wake to look again (and keep the CPU baseline fresh): no query, no event.
+fn start_meters(app: AppHandle) {
+    use tauri::Manager;
+    let run = move || {
+        let mut sampler = sift_core::meters::Sampler::new();
+        loop {
+            let shown = app
+                .get_webview_window("main")
+                .is_some_and(|w| w.is_visible().unwrap_or(false) && !w.is_minimized().unwrap_or(false));
+            if shown {
+                emit(&app, "meters", json!(sampler.sample()));
+                std::thread::sleep(std::time::Duration::from_secs(1));
+            } else {
+                sampler.refresh_cpu();
+                std::thread::sleep(std::time::Duration::from_secs(3));
+            }
+        }
+    };
+    if let Err(e) = std::thread::Builder::new().name("meters".into()).spawn(run) {
+        eprintln!("meters: {e}");
+    }
+}
+
 // A release build is a window program (no console of its own), so its command-line mode borrows
 // the console it was started from; without this every line it prints is lost.
 #[cfg(all(windows, not(debug_assertions)))]
@@ -558,6 +583,7 @@ fn main() {
                     }
                 });
             }
+            start_meters(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

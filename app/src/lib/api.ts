@@ -54,6 +54,16 @@ export type SiftEvent = {
   failed?: number;
 };
 export type DoneEvent = { ok: boolean; cancelled?: boolean; error?: string };
+/** The footer's meters (`meters` event, once a second while the window shows; sift_core::meters). */
+export type Meters = {
+  cpu: number | null;
+  ram_used_mb: number | null;
+  ram_total_mb: number | null;
+  gpu_name: string | null;
+  gpu: number | null;
+  vram_used_mb: number | null;
+  vram_total_mb: number | null;
+};
 
 export type Build = { name: string; dir: string; size_mb: number; cuda_runtime_mb: number; active: boolean; previous: boolean };
 export type EngineStatus = {

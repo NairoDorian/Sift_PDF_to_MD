@@ -24,6 +24,8 @@ panels.
 **The window**
 - Engine page: for each model server, the command Sift starts it with (read-only, with Copy)
   and the end of its log, followed live while it runs.
+- The footer shows the machine's load: CPU, RAM, and with an NVIDIA driver the GPU and its
+  memory (where surya and Gemma load), once a second while the window shows.
 - After Cancel the stages stay where the work was (they used to tick the ones whose requests
   failed at once), and the result card says what was kept.
 - The window opens only what Sift writes (folders, `.md`, `.txt`).
