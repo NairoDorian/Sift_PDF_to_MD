@@ -4,7 +4,10 @@ rem Needs the CUDA toolkit (13.4 or older: cudarc 0.19 does not know 13.5 yet) a
 rem (nvcc compiles candle's kernels with it). The default build needs neither.
 setlocal
 if "%SIFT_CUDA%"=="" set "SIFT_CUDA=C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.4"
-for /f "usebackq tokens=*" %%i in (`"%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath`) do set "VSDIR=%%i"
+rem `call` in front: cmd strips the quotes of a command that starts with a quoted path holding
+rem "(x86)", and vswhere then "is not recognized"
+for /f "usebackq tokens=*" %%i in (`call "%ProgramFiles(x86)%\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath`) do set "VSDIR=%%i"
+if not defined VSDIR (echo Visual Studio with C++ was not found ^(vswhere^) & exit /b 1)
 call "%VSDIR%\VC\Auxiliary\Build\vcvars64.bat" >nul || exit /b 1
 set "CUDA_PATH=%SIFT_CUDA%"
 rem CUDA 13 headers need the conforming preprocessor; cl.exe reads extra options from CL

@@ -382,7 +382,7 @@ the text layer).
    1,000 PDF words at most 46.8 and 121.5; report reviewed; logs read. Engine updated to
    b12728-cuda-13.5 on 2026-11-25 with the user's OK (b12600 kept as previous): Wio's Markdown is
    identical to b12600's outside the image descriptions, scorecard 122.26 on both builds
-   (docs/LEARNINGS.md: the 0.7 over the bar predates the update, to trace). Still to do: the
+   (docs/LEARNINGS.md: the 0.7 over the bar is not the code, which replays the reference to 121.52, but the live CPU layout and live answers; the bar was set with the GPU layout build). Still to do: the
    timings, on an idle machine (that day's runs were 103 to 116 s with the machine busy), and
    LR20xx.
    The window was redesigned and walked page by page on 2026-11-25 (dev preview and the real

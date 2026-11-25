@@ -85,7 +85,13 @@ to beat.
   builds and on a second b12728 run. Speed not measurable that day (the machine was busy:
   103 s and 116 s on b12728, 110 s on b12600 in between); re-time Wio and LR20xx when it is idle.
   The 122.26 against the 121.52 measured before is the same on both builds, so it is not the
-  engine: to trace (the page-size fix of 2b9a178 changed Wio's pages).
+  engine. Traced the same day: the golden output (the reference run's stored answers and
+  layout) scores 121.52, and today's code replaying them scores 121.52 too, so the code is not it
+  either. The live runs differ from it in the title's split and five heading levels (`####` for
+  `#####`: layout boxes, then Gemma's heading votes) and one table cell (`PO` for `P0`: surya),
+  and their layout ran on the CPU (the release build) where the reference ran on the GPU: rf-detr
+  differs between the two near its 0.4 threshold (AGENTS.md). Compare live scores with the
+  GPU layout build (`scripts/build-cuda.cmd`), or record the CPU build's own baseline.
 
 ## Quality against marker (scorecard v2, errors per 1,000 PDF words, lower is better)
 

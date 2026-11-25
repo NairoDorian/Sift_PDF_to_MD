@@ -467,7 +467,18 @@ fn models(what: ModelsCmd) -> Result<()> {
 
 fn config(what: ConfigCmd) -> Result<()> {
     match what {
-        ConfigCmd::Show => print!("{}", toml::to_string_pretty(&Config::load_saved()?)?),
+        ConfigCmd::Show => {
+            print!("{}", toml::to_string_pretty(&Config::load_saved()?)?);
+            // the file is what is shown; conversions also see these (docs/settings.md, priority)
+            let mut env: Vec<(String, String)> = std::env::vars().filter(|(k, _)| k.starts_with("SIFT_")).collect();
+            env.sort();
+            if !env.is_empty() {
+                println!("\n# set in the environment, used by conversions on top of this file:");
+                for (k, v) in env {
+                    println!("# {k}={v}");
+                }
+            }
+        }
         ConfigCmd::Path => println!("{}", sift_core::paths::settings_file().display()),
         ConfigCmd::Set { key, value } => {
             let mut cfg = Config::load_saved()?;
