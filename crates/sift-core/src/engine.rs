@@ -33,9 +33,22 @@ fn previous_file() -> Result<PathBuf> {
     Ok(engine_dir()?.join("previous.txt"))
 }
 
+/// A name that becomes a path in the engine folder (a release tag, a backend, an asset, the
+/// build in current.txt) must be a plain file name: letters, digits, `-`, `.`, `_`, not starting
+/// with a dot. Official names always are (`b12728-cuda-13.5`, `llama-b12728-bin-win-cuda-13.5-x64.zip`);
+/// anything else (`..`, a separator, a drive) would reach outside the folder.
+fn plain_name(s: &str) -> bool {
+    !s.is_empty() && !s.starts_with('.') && s.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '.' | '_'))
+}
+
+fn require_plain(what: &str, s: &str) -> Result<()> {
+    if plain_name(s) { Ok(()) } else { bail!("unexpected {what} {s:?}: not a plain name, so not used as a path") }
+}
+
 pub fn current_build() -> Result<PathBuf> {
     let name = std::fs::read_to_string(current_file()?)
         .map_err(|_| anyhow!("No llama.cpp engine installed. Run: sift engine install"))?;
+    require_plain("build name in current.txt", name.trim())?;
     let b = engine_dir()?.join(name.trim());
     if !b.exists() {
         bail!("Engine folder {} is missing. Run: sift engine install", b.display());
@@ -384,6 +397,8 @@ pub fn install(
     log(&format!("Backend: {backend}"));
     let build_tag = rel["tag_name"].as_str().unwrap_or("").to_string();
     log(&format!("Release: {build_tag}"));
+    require_plain("release tag", &build_tag)?;
+    require_plain("backend", &backend)?;
     let name = format!("{build_tag}-{backend}");
     let dir = engine_dir()?;
     std::fs::create_dir_all(&dir)?;
@@ -399,6 +414,7 @@ pub fn install(
         let res = (|| -> Result<()> {
             let a = main_asset(&rel, &backend);
             log(&format!("Downloading {} ({:.0} MB)", a.name, a.size as f64 / 1e6));
+            require_plain("asset name", &a.name)?;
             let zp = tmp.join(&a.name);
             download(&a.url, &zp, progress)?;
             extract_zip(&zp, &tmp.join("build"))?;
@@ -412,6 +428,7 @@ pub fn install(
                     _ => {
                         let c = cudart_asset(&rel, &backend);
                         log(&format!("Downloading {}", c.name));
+                        require_plain("asset name", &c.name)?;
                         let cz = tmp.join(&c.name);
                         download(&c.url, &cz, progress)?;
                         extract_zip(&cz, &tmp.join("build"))?;
@@ -648,4 +665,25 @@ pub fn rollback(log: &dyn Fn(&str)) -> Result<PathBuf> {
     }
     log(&format!("Active engine: {prev}"));
     Ok(engine_dir()?.join(prev))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn names_from_a_release_list_stay_plain() {
+        for ok in [
+            "b12728",
+            "cuda-13.5",
+            "b12728-cuda-13.5",
+            "llama-b12728-bin-win-cuda-13.5-x64.zip",
+            "cudart-llama-bin-win-cuda-13.5-x64.zip",
+        ] {
+            assert!(plain_name(ok), "{ok}");
+        }
+        for bad in ["", ".", "..", "../x", "..\\x", "C:\\Windows", "/etc", "a/b", "a\\b", ".hidden", "x y", "b1:2"] {
+            assert!(!plain_name(bad), "{bad}");
+        }
+    }
 }

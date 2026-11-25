@@ -176,6 +176,10 @@ pub fn download_file(
     }
     let part = dest.with_extension(format!("{}.part", dest.extension().and_then(|e| e.to_str()).unwrap_or("")));
     let have = std::fs::metadata(&part).map(|m| m.len()).unwrap_or(0);
+    if have == size {
+        // complete already (a run stopped while checking it): straight to the size and sha256 check
+        return finish_part(&part, dest, file, size, sha256, progress);
+    }
     let url = file_url(repo, revision, file);
     let mut req = http().get(&url);
     if have > 0 && have < size {
@@ -205,16 +209,28 @@ pub fn download_file(
     }
     f.flush()?;
     drop(f);
-    let got = std::fs::metadata(&part)?.len();
+    finish_part(&part, dest, file, size, sha256, progress)
+}
+
+/// A downloaded `.part` becomes the model file only with the pinned size and sha256.
+fn finish_part(
+    part: &Path,
+    dest: &Path,
+    file: &str,
+    size: u64,
+    sha256: &str,
+    progress: &dyn Fn(&str, u64, u64),
+) -> Result<()> {
+    let got = std::fs::metadata(part)?.len();
     if got != size {
         bail!("{file}: got {got} bytes, expected {size} (run the download again to resume)");
     }
-    let h = sha256_file(&part, progress)?;
+    let h = sha256_file(part, progress)?;
     if !h.eq_ignore_ascii_case(sha256) {
-        let _ = std::fs::remove_file(&part);
+        let _ = std::fs::remove_file(part);
         bail!("{file}: sha256 {h} does not match the pinned {sha256}; the file was removed");
     }
-    std::fs::rename(&part, dest)?;
+    std::fs::rename(part, dest)?;
     Ok(())
 }
 

@@ -508,7 +508,8 @@ pub fn geometry_score(table: &Table, lines: &[Line], bbox: &[f64; 4]) -> Option<
             };
             for dc in 0..cell.colspan {
                 out.push(if dc == 0 && cell.colspan == 1 && cell.rowspan == 1 { bx } else { None });
-                for dr in 1..cell.rowspan {
+                // rows past the table's end are never read back
+                for dr in 1..cell.rowspan.min(table.rows.len() - r) {
                     carry.insert((r + dr, c + dc));
                 }
             }
@@ -549,7 +550,8 @@ fn grid_of(table: &Table) -> (GridMap, GridMap) {
                 c += 1;
             }
             origin.insert((r, k), (r, c));
-            for dr in 0..cell.rowspan {
+            // rows past the table's end are never looked up
+            for dr in 0..cell.rowspan.min(table.rows.len() - r) {
                 for dc in 0..cell.colspan {
                     cover.entry((r + dr, c + dc)).or_insert((r, k));
                 }

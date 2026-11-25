@@ -70,7 +70,7 @@ struct ConvertArgs {
     /// folder mode: include subfolders
     #[arg(short, long)]
     recursive: bool,
-    /// folder mode: convert again even if the .md is up to date
+    /// folder mode: convert again even if the .md is up to date (newer than its PDF, same options)
     #[arg(long)]
     force: bool,
     /// only these pages, 1-based, e.g. 1-5,137

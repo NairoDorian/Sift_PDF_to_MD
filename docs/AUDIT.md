@@ -172,6 +172,49 @@ stored layouts) only got rewrites that keep the same operations in the same orde
   minimum Rust (1.99) was never enforced (a nightly cargo lint) — cleanup — none — fixed in
   `b685ab9`: every crate inherits it
 
-Still to review (sections 1 to 5 above): the untrusted-input paths (pdfium FFI lifetimes, model
-output parsing in `surya/` and `brain/`), the live server path, cancellation, the `unwrap`s on
-user-controlled input, and targeted tests for the parsers.
+**Round 2 (2026-11-25): untrusted input, robustness, the hard rules; golden 14/14 after the round,
+20 unit tests (6 new), clippy clean.**
+
+- `surya/dom.rs:parse` — no limit on nesting: the walks over the tree (`html.rs`) recurse once per
+  level, so a model that nests a few thousand tags (a loop gone wrong) overflowed the thread's
+  stack and aborted the whole process (reproduced: 100,000 nested `<b>` gave
+  `STATUS_STACK_OVERFLOW`) — bug — none — fixed: past `MAX_DEPTH` (256; real output nests about
+  10 deep) a tag is kept but not entered; test `deep_nesting_is_capped`
+- `surya/html.rs:415` — `colspan`/`rowspan` from the model had no upper bound and the grids loop
+  `rowspan x colspan` times: a made-up `colspan="99999999"` hung the run or ran out of memory —
+  risk — none — fixed: capped at the HTML standard's limits (1000, 65534; browsers do the same),
+  and the three grid loops (`build/tables.rs`, `render/markdown.rs`) visit only the table's own
+  rows (rows past its end were never read); tests for spans and for expanding a capped cell
+- `engine.rs:install`, `current_build` — the release tag, the backend, the asset names (from the
+  release list) and the build in `current.txt` became paths unchecked: a name with `..` or a
+  separator would reach outside the engine folder (zip entries were already safe:
+  `enclosed_name`) — risk — none — fixed: they must be plain names; test
+  `names_from_a_release_list_stay_plain`
+- `batch.rs:is_done` — folder mode counted a Markdown as up to date by its date alone, so a quick
+  `--pages 1-2 --no-llm` run stood in for the real conversion on the next run — bug — none
+  (the golden test converts single files) — fixed: the options of each conversion are kept in
+  `.sift-options` next to its Markdown and must match (outputs from before have none and are
+  trusted as before); checked: same options skipped, other pages reconverted
+- `pdf/pdfium.rs:216` — an unreadable PDF said "error 3" — cleanup — none — fixed: pdfium's codes
+  in words ("it is not a PDF, or it is damaged", "it is protected by a password"...)
+- `models.rs:download_file` — a `.part` already complete (a run stopped while checking it) was
+  downloaded again in full — cleanup — none — fixed: straight to the size and sha256 check
+
+Checked and sound, no change:
+- Model output: every string slice in `surya/`, `brain/`, `build/`, `render/` cuts at a position
+  from `find`, a regex or a char index (no cut inside a UTF-8 character); `describe::clip` is
+  only called with 200 or more; surya's box coordinates are `\d{1,4}` before `parse::<u32>()`.
+- PDFs: empty, plain text, truncated and garbage files each fail cleanly ("cannot open ...",
+  exit 1, the job goes on); nothing panics.
+- Downloads: zip entries through `enclosed_name`; a `.part` resumes with a Range request, a
+  server that ignores it restarts the file, the size and the pinned sha256 decide before the
+  rename.
+- Hard rules: HTTP only in `engine.rs`, `models.rs` and `llm/` (servers on `127.0.0.1` only);
+  `%APPDATA%` only for `settings.toml`; every llama-server is in the kill-on-close Job Object as
+  soon as it is spawned, before any request; the start-up check only when turned on.
+- Folder mode: subfolders mirrored, a broken PDF reported while the others go on, `--force`.
+- The remaining `unwrap`s on input-driven paths all follow a check that makes them safe.
+
+Still to do: Cancel by hand in the window (no model may start after it), the settings file's
+environment overrides and portable mode, the first-run flow on an empty profile, and a pass for
+dead code and comments that still describe V0.

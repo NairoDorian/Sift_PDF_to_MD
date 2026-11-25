@@ -412,10 +412,12 @@ fn table_from_node(d: &Dom, table: NodeId) -> Option<Table> {
             if t != "td" && t != "th" {
                 continue;
             }
-            let span = |k: &str| {
+            // capped at the HTML standard's own limits (browsers clamp the same way): a span the
+            // model made up cannot ask for a grid of billions of cells; real tables never get near
+            let span = |k: &str, max: i64| {
                 d.attr(c, k)
                     .filter(|v| !v.is_empty())
-                    .map(|v| py::strip(v).parse::<i64>().map(|x| x.max(1) as usize).unwrap_or(1))
+                    .map(|v| py::strip(v).parse::<i64>().map(|x| x.clamp(1, max) as usize).unwrap_or(1))
                     .unwrap_or(1)
             };
             let in_thead = d.n(tr).parent.is_some_and(|p| d.n(p).tag == "thead");
@@ -423,8 +425,8 @@ fn table_from_node(d: &Dom, table: NodeId) -> Option<Table> {
                 html: TRAIL_BR.replace_all(&norm_ws(&inline_html(d, c)), ""),
                 text: norm_ws(&cell_text(d, c)),
                 header: t == "th" || in_thead,
-                colspan: span("colspan"),
-                rowspan: span("rowspan"),
+                colspan: span("colspan", 1000),
+                rowspan: span("rowspan", 65534),
             });
         }
         if !cells.is_empty() {
@@ -698,4 +700,33 @@ pub fn figure_labels(html: &str) -> Vec<String> {
     }
     let mut seen = std::collections::HashSet::new();
     out.into_iter().filter(|t| !t.is_empty() && seen.insert(t.clone())).collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Spans come from the model's text: capped at the HTML standard's limits, and anything that
+    /// is not a positive number counts as 1, as before.
+    #[test]
+    fn spans_are_capped_and_cleaned() {
+        let t = parse_table(
+            r#"<table><tr><td colspan="5000" rowspan="99999">a</td><td colspan="99999999999999999999">b</td><td colspan="0">c</td><td colspan="-3">d</td><td colspan=" 2 ">e</td><td colspan="x">f</td></tr></table>"#,
+        )
+        .expect("a table");
+        let c = &t.rows[0];
+        assert_eq!((c[0].colspan, c[0].rowspan), (1000, 65534));
+        assert_eq!([c[1].colspan, c[2].colspan, c[3].colspan, c[4].colspan, c[5].colspan], [1, 1, 1, 2, 1]);
+    }
+
+    #[test]
+    fn ordinary_spans_are_kept() {
+        let t = parse_table(
+            r#"<table><tr><th colspan="3">h</th></tr><tr><td rowspan="2">a</td><td>b</td><td>c</td></tr></table>"#,
+        )
+        .expect("a table");
+        assert_eq!(t.rows[0][0].colspan, 3);
+        assert_eq!(t.rows[1][0].rowspan, 2);
+        assert!(t.rows[0][0].header);
+    }
 }

@@ -253,6 +253,13 @@ fn is_ws(c: char) -> bool {
 }
 
 /// Parse with V0's _Builder rules.
+/// The deepest an element can sit in a parsed tree. The text comes from a model, and the
+/// walks over the tree (`html.rs`: inline HTML, Markdown, cell text) recurse once per level:
+/// a few thousand nested tags would overflow a thread's stack and abort the whole run. surya's
+/// real output nests about 10 deep (table, row, cell, bold, superscript...); Python's version
+/// stopped at its recursion limit of 1,000.
+pub const MAX_DEPTH: usize = 256;
+
 pub fn parse(html: &str) -> Dom {
     let mut dom = Dom::new_root();
     let mut stack: Vec<NodeId> = vec![Dom::ROOT];
@@ -369,7 +376,9 @@ pub fn parse(html: &str) -> Dom {
             close_implied(&dom, &mut stack, &name);
             let parent = *stack.last().unwrap();
             let id = dom.add(parent, &name, attrs, String::new());
-            if !self_close && !VOID.contains(&name.as_str()) {
+            // past MAX_DEPTH a tag is kept but not entered: its content stays at that level, so
+            // the recursive walks over this tree stay shallow whatever the model wrote
+            if !self_close && !VOID.contains(&name.as_str()) && stack.len() < MAX_DEPTH {
                 stack.push(id);
             }
             i = k;
@@ -462,5 +471,21 @@ mod tests {
         // V0's _Builder: a <tr> closes the open cell only, so the new row nests in the old
         // one (checked against V0 2026-11-06; surya's compact decoder adds the </tr> first)
         assert_eq!(d.to_html(Dom::ROOT), "<table><tr><td>a</td><td>b</td><tr><td>c</td></tr></tr></table>");
+    }
+
+    /// A model that nests 100,000 tags (a loop gone wrong) gets a tree no deeper than MAX_DEPTH,
+    /// so the recursive walks over it finish instead of overflowing the stack.
+    #[test]
+    fn deep_nesting_is_capped() {
+        let html = format!("{}x{}", "<b>".repeat(100_000), "</b>".repeat(100_000));
+        let d = parse(&html);
+        let (mut depth, mut id) = (0, Dom::ROOT);
+        while let Some(&c) = d.n(id).children.iter().find(|&&c| d.n(c).tag == "b") {
+            id = c;
+            depth += 1;
+        }
+        assert!(depth <= MAX_DEPTH, "depth {depth}");
+        assert!(d.to_html(Dom::ROOT).contains('x'));
+        assert!(crate::surya::html::block_to_markdown(&html, None).contains('x'));
     }
 }

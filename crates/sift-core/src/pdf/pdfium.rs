@@ -213,7 +213,15 @@ impl Document {
         unsafe {
             let raw = (a.FPDF_LoadMemDocument64)(bytes.as_ptr() as *const c_void, bytes.len(), std::ptr::null());
             if raw.is_null() {
-                bail!("pdfium could not open {} (error {})", path.display(), (a.FPDF_GetLastError)());
+                // pdfium's FPDF_ERR_* codes, in words
+                let why = match (a.FPDF_GetLastError)() {
+                    2 => "the file could not be read".to_string(),
+                    3 => "it is not a PDF, or it is damaged".to_string(),
+                    4 => "it is protected by a password".to_string(),
+                    5 => "its security scheme is not supported".to_string(),
+                    e => format!("pdfium error {e}"),
+                };
+                bail!("cannot open {}: {why}", path.display());
             }
             let mut form: FormHandle = std::ptr::null_mut();
             let mut info = None;

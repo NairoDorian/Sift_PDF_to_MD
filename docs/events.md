@@ -15,7 +15,7 @@ Every event has:
 
 | `type` | Extra fields | When |
 |---|---|---|
-| `job_start` | `files` (int), `output` (folder), `mode` (`hybrid` \| `full-ocr`), `describer` (`gemma` \| `off`), `engine` (llama.cpp build), `skipped` (int: up-to-date files in folder mode) | The job starts |
+| `job_start` | `files` (int), `output` (folder), `mode` (`hybrid` \| `full-ocr`), `describer` (`gemma` \| `off`), `engine` (llama.cpp build), `skipped` (int: up-to-date files in folder mode: newer than their PDF and converted with the same options, recorded in `.sift-options` next to each Markdown) | The job starts |
 | `file_start` | `index` (0-based), `total`, `pages` | A PDF is opened |
 | `stage` | `name`, `done`, `total` | Progress inside a file. Names: `text` (text layer), `layout`, `build` (pages), `surya` (tables, formulas, broken text, scanned pages, figure labels), `refine` (the LLM pass: table reviews and formulas), `describe` (figures). In a file, `refine` comes before `describe`; heading levels and table merges (also the LLM pass) run after both, without a count |
 | `server` | `model` (`surya` \| `gemma`), `state` (`starting` \| `ready` \| `stopped`), `seconds` (load time, on `ready`) | Model server lifecycle: a server starts with its first job and stops when idle |

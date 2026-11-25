@@ -29,7 +29,8 @@ fn expand(table: &Table) -> Vec<Vec<String>> {
             let Some(cell) = it.next() else { break };
             for dc in 0..cell.colspan {
                 out.push(cell.html.clone());
-                for dr in 1..cell.rowspan {
+                // rows past the table's end are never read back
+                for dr in 1..cell.rowspan.min(table.rows.len() - r) {
                     carry.insert((r + dr, c + dc), cell.html.clone());
                 }
             }
@@ -274,4 +275,33 @@ pub fn render(blocks: &[Block], tables: &str) -> String {
     let parts: Vec<String> = blocks.iter().map(|b| block_markdown(b, tables)).filter(|p| py::has_ink(p)).collect();
     let md = parts.join("\n\n");
     format!("{}\n", py::strip(&NL3.replace_all(&md, "\n\n")))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A cell whose made-up spans hit the caps (1000 x 65534) still expands at once: only the
+    /// table's own rows are filled.
+    #[test]
+    fn huge_spans_expand_quickly() {
+        let t = crate::surya::html::parse_table(
+            r#"<table><tr><td colspan="99999" rowspan="99999">a</td></tr><tr><td>b</td></tr></table>"#,
+        )
+        .expect("a table");
+        let g = expand(&t);
+        // row 1 gets the 1000 carried copies plus its own cell; rows are padded to the widest
+        assert_eq!(g.len(), 2);
+        assert_eq!((g[0].len(), g[1].len()), (1001, 1001));
+    }
+
+    /// A rowspan carries the cell's text down into the next row, column for column.
+    #[test]
+    fn rowspan_carries_down() {
+        let t = crate::surya::html::parse_table(
+            r#"<table><tr><td rowspan="2">a</td><td>b</td></tr><tr><td>c</td></tr></table>"#,
+        )
+        .expect("a table");
+        assert_eq!(expand(&t), vec![vec!["a".to_string(), "b".into()], vec!["a".into(), "c".into()]]);
+    }
 }
