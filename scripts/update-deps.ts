@@ -14,16 +14,23 @@
  * Rules (each printed in the report when it applies):
  * - crates.io: the HIGHEST non-yanked version (prereleases included unless --stable).
  * - npm: the highest version among every dist-tag (`latest`, `next`, `beta`, `rc`, `alpha`, `dev`...).
- * - NPM_LINE_PINNED: the Solid 2 packages follow their `next` dist-tag within their major and never
- *   go back (npm `latest` is still Solid 1.x).
+ * - NPM_LINE_PINNED: the Solid packages stay on their major (Solid 2, its Vite plugin 3) and take
+ *   the newer of their `next` and `latest` tags, never a downgrade. Both tags are read because each
+ *   one has been the stale one: `next` carried Solid 2 while `latest` was 1.x, and since Solid 2.0
+ *   went stable `next` sits at 2.0.0-rc.23 while `latest` moves (2.0.4, 2026-11-25). Following
+ *   `next` alone held Sift on the release candidate (ZER0 reads both for the same reason).
  * - MAJOR_LOCKED: the Tauri family stays on major 3 (its newest alpha/beta/rc); a JS API must never
  *   talk to a different Tauri over IPC. Git dependencies (Tauri's plugins-workspace `v3` branch)
  *   follow their branch tip through `cargo update`.
  * - A crate whose new version does not resolve is put back to its previous spec, reported as held
  *   with the conflict, and `cargo update` runs again (ZER0's conflict handling).
+ * - Transitive dependencies move too: `cargo update` rewrites the whole Cargo.lock, `bun update`
+ *   the whole bun.lock (within package.json's exact pins, so no pin is rewritten).
+ * - Report only: the toolchain (rustc and Bun against their newest releases) and the GitHub
+ *   Actions in `.github/workflows` with a newer major (ZER0's audit).
  * Validation is not optional (a lockfile that resolves is not a lockfile that builds):
  *   cargo update (the whole lockfile) -> cargo check --workspace --all-targets -> unit tests
- *   bun install -> tsc -b -> vite build
+ *   bun update -> tsc -b -> vite build
  *   cargo build --release -p sift-cli -> golden test (bench/golden/run.sh: 7 PDFs byte-identical)
  */
 import fs from "node:fs";
@@ -37,10 +44,10 @@ const PRE = !args.has("--stable");
 const QUICK = args.has("--quick");
 const UA = { "User-Agent": "sift-update-deps" };
 
-const NPM_LINE_PINNED: Record<string, { tag: string; why: string }> = {
-  "solid-js": { tag: "next", why: "Solid 2 exists only on the `next` line; `latest` is still 1.x" },
-  "@solidjs/web": { tag: "next", why: "Solid 2 web runtime, same line as solid-js" },
-  // not @solidjs/vite-plugin: its `next` tag lags its `latest` (3.0.0-next.35 vs next.57, 2026-11-07)
+const NPM_LINE_PINNED: Record<string, { tags: string[]; major: number; why: string }> = {
+  "solid-js": { tags: ["next", "latest"], major: 2, why: "stays on Solid 2: `next` and `latest` have each lagged the other" },
+  "@solidjs/web": { tags: ["next", "latest"], major: 2, why: "the Solid 2 renderer, same line as solid-js" },
+  "@solidjs/vite-plugin": { tags: ["next", "latest"], major: 3, why: "the Solid 2 compiler plugin (3.x); its `next` tag has lagged `latest` since next.35" },
 };
 const NPM_MAJOR_LOCKED_PREFIXES = ["@tauri-apps/"];
 const CARGO_MAJOR_LOCKED = new Set<string>(["tauri", "tauri-build", "tauri-runtime-wry", "tauri-runtime", "tauri-utils", "tauri-macros", "tauri-codegen", "tauri-plugin"]);
@@ -166,9 +173,13 @@ async function npmBest(name: string, current: string): Promise<{ v: string; note
   const cur = parse(bare(current));
   const pinned = NPM_LINE_PINNED[name];
   if (pinned) {
-    const v = tags[pinned.tag];
-    const pv = v ? parse(v) : null;
-    if (pv && (!cur || (pv.major === cur.major && cmp(pv, cur) > 0))) return { v, note: `line-pinned to \`${pinned.tag}\`: ${pinned.why}` };
+    const onLine = pinned.tags
+      .map((t) => (tags[t] ? parse(tags[t]) : null))
+      .filter((v): v is Ver => !!v && v.major === pinned.major && (PRE || !v.pre.length))
+      .sort(cmp);
+    const pv = onLine.at(-1);
+    const seen = pinned.tags.map((t) => `${t} ${tags[t] ?? "-"}`).join(", ");
+    if (pv && (!cur || cmp(pv, cur) > 0)) return { v: pv.raw, note: `line-pinned to ${pinned.major}.x (${seen}): ${pinned.why}` };
     return null;
   }
   const cands = Object.entries(tags).filter(([t]) => PRE || t === "latest").map(([, v]) => parse(v)).filter(Boolean) as Ver[];
@@ -212,8 +223,53 @@ const report = () => {
   for (const h of held) console.log(`  held ${h.name} ${h.from} (newest ${h.to}): ${h.note}`);
   if (!changes.some((c) => c.from !== "git")) console.log("  everything is already at its newest version");
 };
+
+/** Report only: the toolchain against its newest releases. Updating it is the maintainer's call
+ * (`rustup update`, `bun upgrade`): both are machine-wide, shared with every other project. */
+async function toolchainReport(): Promise<void> {
+  const rustc = run("rustc", ["--version"]).out.trim();
+  // the active toolchain (stable or a nightly lane), as `rustup check` reports it
+  const active = run("rustup", ["show", "active-toolchain"]).out.trim().split(/\s+/)[0] ?? "";
+  const lines = run("rustup", ["check"]).out.split("\n").map((l) => l.trim());
+  const mine = lines.find((l) => active && l.startsWith(active));
+  console.log(`  toolchain: ${rustc || "rustc not found"}${mine ? `  [rustup: ${mine}]` : ""}`);
+  const bunNow = run("bun", ["--version"]).out.trim();
+  try {
+    const r = await fetch("https://registry.npmjs.org/bun", { headers: { ...UA, Accept: "application/vnd.npm.install-v1+json" } });
+    const newest: string | undefined = r.ok ? ((await r.json()) as any)["dist-tags"]?.latest : undefined;
+    const a = parse(bunNow), b = newest ? parse(newest) : null;
+    console.log(`  toolchain: bun ${bunNow}${a && b && cmp(b, a) > 0 ? `  [newer: ${newest}, run \`bun upgrade\`]` : "  [newest]"}`);
+  } catch {
+    console.log(`  toolchain: bun ${bunNow}`);
+  }
+}
+
+/** Report only (ZER0's audit): GitHub Actions in .github/workflows that have a newer major. */
+async function actionsReport(): Promise<void> {
+  const dir = path.join(ROOT, ".github", "workflows");
+  if (!fs.existsSync(dir)) return;
+  const refs = new Map<string, number>();
+  for (const f of fs.readdirSync(dir).filter((f) => /\.ya?ml$/.test(f))) {
+    for (const m of fs.readFileSync(path.join(dir, f), "utf8").matchAll(/uses:\s*([\w.-]+\/[\w.-]+)@v(\d+)/g)) refs.set(m[1], Number(m[2]));
+  }
+  const headers: Record<string, string> = { ...UA, Accept: "application/vnd.github+json" };
+  if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
+  for (const [repo, major] of refs) {
+    try {
+      const r = await fetch(`https://api.github.com/repos/${repo}/releases/latest`, { headers });
+      const tag: string | undefined = r.ok ? ((await r.json()) as any).tag_name : undefined;
+      const newest = tag ? Number(/^v?(\d+)/.exec(tag)?.[1]) : NaN;
+      if (newest > major) console.log(`  action ${repo}@v${major}: v${newest} exists (${tag}); move it by hand after reading its notes`);
+    } catch {
+      /* report only: an unreachable API is not a failure */
+    }
+  }
+}
+
 if (DRY) {
   report();
+  await toolchainReport();
+  await actionsReport();
   process.exit(0);
 }
 
@@ -235,13 +291,16 @@ for (let attempt = 0; ; attempt++) {
   process.exit(1);
 }
 report();
+await toolchainReport();
+await actionsReport();
 
 const steps: [string, string, string[], string][] = [
   ["cargo check", "cargo", ["check", "--workspace", "--all-targets"], ROOT],
   ["unit tests", "cargo", ["test", "-p", "sift-core", "--lib"], ROOT],
 ];
 if (hasApp) {
-  steps.push(["bun install", "bun", ["install"], path.join(ROOT, "app")]);
+  // `bun update`, not `bun install`: install keeps every locked sub-dependency where it was
+  steps.push(["bun update", "bun", ["update"], path.join(ROOT, "app")]);
   steps.push(["typecheck", "bun", ["x", "tsc", "-b"], path.join(ROOT, "app")]);
   steps.push(["vite build", "bun", ["x", "vite", "build"], path.join(ROOT, "app")]);
 }

@@ -23,7 +23,8 @@ manager: detect new builds, install, update, roll back, from the Engine page or 
 
 ## Start here (handover for the next AI agent)
 
-**Status (2026-11-19).** The final architecture is in place, and the code is public:
+**Status (2026-11-25).** The final architecture is in place, the code is public, and the first
+release (1.0.0-alpha.2, a Windows installer) is ready to build from the Release workflow:
 - **Repository:** <https://github.com/NairoDorian/Sift_PDF_to_MD>, first commit 2026-11-19. Everything
   is at the repository root (the `V1/` folder was flattened that day). The first, Python version
   and the multi-model experiments are gone; the Python version's recorded run lives on as the
@@ -35,8 +36,11 @@ manager: detect new builds, install, update, roll back, from the Engine page or 
 - **Command line:** `sift setup`, the full `sift engine` set (status, check, update, list, use,
   rollback, remove, remove-runtime, folder), `sift models` (status, check, download, verify,
   delete, folder) and `sift config`.
-- **The window:** Start (first run), Convert, Engine (ZER0's llama.cpp page: update check, menu
-  dot, install with progress, installed builds), Models, Settings (folder pickers), Logs, About.
+- **The window (redesigned 2026-11-25, ZER0's look in Sift's palette):** Setup (first run),
+  Convert (the PDF, the sieve, the Markdown; the saved options), Engine, Models, Settings (theme,
+  motion, GPU sharing), Logs, About. One place per setting (section 9).
+- **Release:** NSIS installer with `sift.exe`, pdfium and its licenses, prompts, catalog
+  (`app/src-tauri/tauri.release.conf.json`); `.github/workflows/release.yml` builds it into a draft.
 - **Golden test:** 14/14 byte-identical.
 - **Dependencies:** at their newest prereleases.
 
@@ -329,17 +333,23 @@ installs the newest engine build and downloads and verifies the three models.
 
 ## 9. The window
 
+ZER0's design language (sharp corners, hairlines, tracked group titles, mono numbers) in Sift's
+palette (warm ink and paper, one amber accent), dark, light or the system's. One place per setting:
+a setting has one control, on the page it belongs to; other pages link to it.
+
 | Page | Content |
 |---|---|
-| Start | first run: engine folder, models folder, "check at start-up", Install llama.cpp, Download the models; shown until everything is ready |
-| Convert | PDF or folder (with a folder picker), output folder, pages, image descriptions, LLM pass, subfolders, convert again, full OCR, pipe tables, keep headers; Convert / Cancel; the log |
-| Engine | section 6 |
-| Models | section 7 |
-| Settings | both folders, conversion defaults, the start-up check |
-| Logs | every event of the session; where each run's trace and server logs are |
-| About | versions, GPU, driver CUDA, CPU threads, settings file, licenses |
+| Setup | first run, in four steps: engine folder, models folder, install llama.cpp (+ the start-up check), download the models; in the menu until everything is ready |
+| Convert | laid out as the job: the PDF card (drop or choose a PDF or a folder), the sieve (the stages with their counts, Convert / Cancel, elapsed time), the Markdown card (output folder; then the result: open, show in folder, report, numbers, first lines; one row per file for a folder). Beside it: the saved options (descriptions, LLM pass, scanned PDF, page headers, tables, image DPI) and this run's (pages, subfolders, convert again) |
+| Engine | section 6: status strip, Check now / Install / Update with progress, the start-up check, backend, CUDA runtime, engine folder, model servers, installed builds |
+| Models | section 7: models folder, one card per model with progress, verify, delete (asks once), revision check |
+| Settings | theme, motion, how the two models share the GPU, where the folders and the settings file are |
+| Logs | the session's events, readable; filters (progress, servers, problems), copy, clear |
+| About | the mark, version, GPU, CUDA, CPU, engine, the command line, credits and licenses |
 
-Footer: running servers, the current stage, the active llama.cpp build (+ "update available").
+Footer: the two model servers (dots), the current stage and progress, the active llama.cpp build
+(+ "update available"), the version. The sieve's motion follows Windows' "Animation effects"
+(reduced, not removed, when they are off) unless Settings forces it on or off.
 
 ---
 
@@ -372,16 +382,17 @@ the text layer).
    1,000 PDF words at most 46.8 and 121.5; report reviewed; logs read. The check of 2026-11-16
    found a newer official build (b12428-cuda-13.5; active b12368): update with the user's OK
    (`sift engine update` or the Engine page), then compare a live Wio run with the last one.
-   Also open the window once and walk every page (it builds and its commands run headless, but no
-   one has looked at it since the rewrite).
+   The window was redesigned and walked page by page on 2026-11-25 (dev preview and the real
+   app); a live conversion from the window is part of this check.
 2. **Window, ZER0 parity**: the live log ring of each llama-server on the Engine page (ZER0
    `llama_server.rs`); a read-only preview of each server's command line; footer meters (CPU, RAM,
    GPU, VRAM) if they earn their dependency (`sysinfo`, `nvml-wrapper`); typed commands with
    tauri-specta; ZER0's pre-commit gate (oxlint, typecheck, tests, format).
 3. **Window check**: a run of the first-run flow on a fresh user profile with empty folders
    (Start -> install -> download -> convert Wio), and the same with `sift setup`.
-4. **Installer**: `sift-app.exe` + `sift.exe` + `pdfium.dll` + `prompts\` + `catalog\` in one
-   package; first run = the Start page.
+4. **Installer** (done 2026-11-25): NSIS, per user: `sift-app.exe` + `sift.exe` + `pdfium.dll`
+   (+ its licenses) + `prompts\` + `catalog\`; first run = the Setup page. Next: publish the first
+   draft release from the Release workflow after a run on a clean machine.
 5. Then the backlog (13).
 
 ---
@@ -462,6 +473,6 @@ the text layer).
 
 The exact versions are in `Cargo.toml`, `app/src-tauri/Cargo.toml` and `app/package.json`, kept at
 their newest (prereleases included) by `scripts/update-deps.ts`: Rust 1.99 (edition 2024), Tauri 3
-(alpha), `tauri-plugin-dialog` (plugins-workspace `v3`), SolidJS 2 (release candidate,
-npm `next`), Vite, TypeScript (dev builds), Bun 1.4, candle (layout), pdfium-binaries
+(alpha), `tauri-plugin-dialog` (plugins-workspace `v3`), SolidJS 2 (stable since 2.0; the
+newer of npm `next` and `latest`), Vite, TypeScript (dev builds), Bun 1.4, candle (layout), pdfium-binaries
 chromium/7891, llama.cpp official CUDA 13.5 builds.

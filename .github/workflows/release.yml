@@ -1,0 +1,63 @@
+# Release: builds the Windows installer and attaches it to a DRAFT release named after the version
+# in app/src-tauri/tauri.conf.json. Manual only (Actions > Release > Run workflow): nothing is
+# published until the draft is reviewed and published by hand on GitHub.
+#
+# The installer holds sift-app.exe (the window; with a subcommand it is the command line), sift.exe
+# (the command line), pdfium.dll (chromium/7891, the build the golden test expects, with its
+# licenses), prompts/ and catalog/. llama.cpp and the models are never bundled: Sift downloads them
+# into the folders the user chooses on first run.
+#
+# The layout model runs on the CPU in this build (the GPU build needs the CUDA toolkit:
+# scripts/build-cuda.cmd).
+name: Release
+
+on: workflow_dispatch
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: oven-sh/setup-bun@v2
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: pdfium chromium/7891 (pdfium-binaries)
+        shell: bash
+        run: |
+          tmp="$(cygpath -u "$RUNNER_TEMP")/pdfium"
+          mkdir -p runtime/pdfium "$tmp"
+          curl -fsSL -o "$tmp/pdfium.tgz" "https://github.com/bblanchon/pdfium-binaries/releases/download/chromium%2F7891/pdfium-win-x64.tgz"
+          tar --force-local -xzf "$tmp/pdfium.tgz" -C "$tmp"
+          (cd "$tmp" && echo "e66bd5aefc2829f12ef41227f83a6ec6d60673ec77ef64153a05e7ffbae9072e  bin/pdfium.dll" | sha256sum -c -)
+          cp "$tmp/bin/pdfium.dll" "$tmp/LICENSE" runtime/pdfium/
+          cp -r "$tmp/licenses" runtime/pdfium/
+
+      - name: Window packages
+        working-directory: app
+        run: bun install --frozen-lockfile
+
+      - name: Version
+        id: version
+        shell: bash
+        run: echo "v=$(grep -m1 -o '"version": "[^"]*"' app/src-tauri/tauri.conf.json | cut -d'"' -f4)" >> "$GITHUB_OUTPUT"
+
+      - name: Build the installer
+        working-directory: app
+        run: bun x tauri build --config src-tauri/tauri.release.conf.json
+
+      - name: Draft release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          v="${{ steps.version.outputs.v }}"
+          exe=$(ls target/release/bundle/nsis/*-setup.exe | head -1)
+          (cd "$(dirname "$exe")" && sha256sum "$(basename "$exe")" > "$(basename "$exe").sha256")
+          notes="$(cygpath -u "$RUNNER_TEMP")/notes.md"
+          awk -v v="$v" '/^## /{p = index($0, v) > 0} p' CHANGELOG.md > "$notes"
+          gh release create "v$v" "$exe" "$exe.sha256" --draft --prerelease --target "$GITHUB_SHA" --title "Sift $v" --notes-file "$notes"

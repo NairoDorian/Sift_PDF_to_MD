@@ -30,7 +30,7 @@ Versions are always the newest published, prereleases included: `bun scripts/upd
 
 | Package | Why |
 |---|---|
-| solid-js, @solidjs/web (2.x, the `next` line) | the UI (ZER0's stack) |
+| solid-js, @solidjs/web (2.x: the newer of the `next` and `latest` tags) | the UI (ZER0's stack) |
 | @tauri-apps/api (3.x) | commands and events between the page and Rust |
 | @tauri-apps/cli, vite, @solidjs/vite-plugin, typescript | build tools |
 

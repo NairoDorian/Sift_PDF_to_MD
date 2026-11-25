@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/sift-core", "crates/sift-cli", "app/src-tauri"]
 
 [workspace.package]
-version = "1.0.0-alpha.1"
+version = "1.0.0-alpha.2"
 edition = "2024"
 license = "Apache-2.0"
 rust-version = "1.99"
@@ -11,7 +11,7 @@ rust-version = "1.99"
 # Strict dependencies (MASTER_PLAN VD14): ZER0's set first, each addition with its reason in
 # docs/DEPENDENCIES.md. No second inference runtime next to llama.cpp for language models.
 [workspace.dependencies]
-anyhow = "1.0.104"
+anyhow = "1.0.105"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = { version = "1.0.154", features = ["preserve_order"] }
 sha2 = "0.11.1"
@@ -21,10 +21,10 @@ regex = "1.13.2"
 fancy-regex = "0.20.2"
 unicode-general-category = "1.1"
 unicode-normalization = "0.1.26"
-clap = { version = "4.6.8", features = ["derive", "env"] }
+clap = { version = "4.6.10", features = ["derive", "env"] }
 reqwest = { version = "0.13.5", default-features = false, features = ["blocking", "json", "rustls", "gzip"] }
-zip = { version = "9.7.3", default-features = false, features = ["deflate"] }
-toml = "1.2.1"
+zip = { version = "9.8.2", default-features = false, features = ["deflate"] }
+toml = "1.2.3"
 base64 = "0.23.1"
 candle-core = "0.11.1"
 candle-nn = "0.11.1"

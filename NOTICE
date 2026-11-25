@@ -42,3 +42,8 @@ into the folder the user chooses, under their own licenses:
   - Gemma 4 E4B (unsloth/gemma-4-E4B-it-qat-GGUF): Gemma terms of use.
 llama.cpp (https://github.com/ggml-org/llama.cpp, MIT) is downloaded as official release builds,
 never bundled.
+
+The Windows installer ships pdfium.dll from pdfium-binaries (https://github.com/bblanchon/pdfium-binaries),
+build chromium/7891: PDFium is BSD-3-Clause (Copyright 2014 The PDFium Authors), the binary package
+MIT (Copyright 2014-2025 Benoit Blanchon); both licenses and those of PDFium's third-party parts
+are installed next to it, in licenses/pdfium/.

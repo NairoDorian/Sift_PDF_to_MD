@@ -1,7 +1,7 @@
 {
   "name": "sift-app",
   "private": true,
-  "version": "1.0.0-alpha.1",
+  "version": "1.0.0-alpha.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,14 +11,14 @@
     "update": "bun ../scripts/update-deps.ts"
   },
   "dependencies": {
-    "@solidjs/web": "2.0.0-rc.23",
+    "@solidjs/web": "2.0.4",
     "@tauri-apps/api": "3.0.0-alpha.3",
-    "solid-js": "2.0.0-rc.23"
+    "solid-js": "2.0.4"
   },
   "devDependencies": {
     "@solidjs/vite-plugin": "3.0.1",
     "@tauri-apps/cli": "3.0.0-alpha.6",
-    "typescript": "7.1.0-dev.20261119.1",
-    "vite": "8.4.0-beta.1"
+    "typescript": "7.1.0-dev.20261125.1",
+    "vite": "8.4.0-beta.2"
   }
 }

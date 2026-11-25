@@ -9,6 +9,7 @@
 use std::collections::{HashMap, HashSet};
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -1366,6 +1367,16 @@ impl<'a> FileJob<'a> {
             }
         }
         let reviews = jobs.iter().filter(|j| j.review).count() as i64;
+        // progress of the LLM pass and of the descriptions (docs/events.md: `refine`, `describe`);
+        // events only, nothing here changes what is written
+        let (rt, file) = (self.rt, self.pdf.display().to_string());
+        let stage = |name: &str, done: usize, total: usize| {
+            rt.events.emit("stage", json!({"name": name, "done": done, "total": total, "file": file}));
+        };
+        let (n_jobs, refined) = (jobs.len(), AtomicUsize::new(0));
+        if n_jobs > 0 {
+            stage("refine", 0, n_jobs);
+        }
         let done: Vec<(RJob, Option<String>)> = par_map(jobs, slots, |mut j| {
             let srv = live();
             let ctx = passes::Ctx { server: srv.as_deref(), store: &store, think, slots };
@@ -1376,6 +1387,7 @@ impl<'a> FileJob<'a> {
                 passes::equation(&ctx, &mut j.block);
                 None
             };
+            stage("refine", refined.fetch_add(1, Ordering::Relaxed) + 1, n_jobs);
             (j, line)
         });
         let mut fixed = 0;
@@ -1400,7 +1412,7 @@ impl<'a> FileJob<'a> {
         let figs = std::mem::take(&mut self.figs);
         let cfg = self.rt.cfg.gemma.clone();
         let idx: Vec<usize> = (0..figs.len()).filter(|&i| figs[i].describe).collect();
-        let results: Vec<(usize, Result<Completion, String>)> = par_map(idx, slots, |i| {
+        let describe_one = |i: usize| -> Result<Completion, String> {
             let fj = &figs[i];
             let ctx = &fj.task.context;
             let mut kind = kind_from_text(&ctx.caption, &ctx.figure_text).map(String::from);
@@ -1411,11 +1423,20 @@ impl<'a> FileJob<'a> {
                 Some(k) => k,
                 None => match brain::classify(live().as_deref(), &store, &fj.crop, &fj.png) {
                     Some(k) => k,
-                    None => return (i, Err("no figure kind".to_string())),
+                    None => return Err("no figure kind".to_string()),
                 },
             };
             let prompt = build_prompt(&kind, ctx);
-            (i, Ok(brain::describe(live().as_deref(), &store, &fj.crop, &fj.png, &prompt, &cfg)))
+            Ok(brain::describe(live().as_deref(), &store, &fj.crop, &fj.png, &prompt, &cfg))
+        };
+        let (n_figs, figs_done) = (idx.len(), AtomicUsize::new(0));
+        if n_figs > 0 {
+            stage("describe", 0, n_figs);
+        }
+        let results: Vec<(usize, Result<Completion, String>)> = par_map(idx, slots, |i| {
+            let r = describe_one(i);
+            stage("describe", figs_done.fetch_add(1, Ordering::Relaxed) + 1, n_figs);
+            (i, r)
         });
         let mut described = 0;
         let mut cached = 0;

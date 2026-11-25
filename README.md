@@ -1,3 +1,8 @@
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/banner-dark.svg">
+  <img alt="Sift: PDFs to Markdown you can trust" src="docs/brand/banner-light.svg" width="100%">
+</picture>
+
 # Sift
 
 **PDFs to Markdown you can trust: every value checked against the PDF itself, every image kept
@@ -18,7 +23,7 @@ Two models do the work, on your GPU, through official llama.cpp builds:
 - **Gemma 4 E4B** describes the images, sets heading levels, joins tables split across pages,
   writes missing formulas and reviews the tables the checks couldn't verify.
 
-> **Status: alpha (1.0.0-alpha.1), Windows only for now.** The core is plain Rust and the window
+> **Status: alpha (1.0.0-alpha.2), Windows only for now.** The core is plain Rust and the window
 > is Tauri, but the engine manager installs Windows CUDA builds of llama.cpp and only Windows is
 > tested. Linux and macOS are planned.
 
@@ -36,7 +41,46 @@ Two models do the work, on your GPU, through official llama.cpp builds:
   the 250-page LR20xx: 46.8 vs marker's 56.1), and every change is checked byte for byte against
   a golden set before it lands.
 
-## Requirements
+## Install
+
+1. Download `Sift_<version>_x64-setup.exe` from the
+   [Releases page](https://github.com/NairoDorian/Sift_PDF_to_MD/releases) (its `.sha256` sits
+   next to it) and run it. It installs for your user only, no administrator rights needed.
+2. Open Sift. The Setup page asks where llama.cpp and the models go (about 0.6 GB and 6.2 GB),
+   then installs the newest official llama.cpp CUDA 13.5 build and downloads the three models.
+   Nothing is downloaded before you choose the folders and press the buttons.
+3. Drop a PDF (or a folder of PDFs) on the window and press **Convert**.
+
+The installer also puts `sift.exe`, the command line, next to the window's program (the About
+page shows the folder). You need Windows 10/11 x64 and an NVIDIA GPU whose driver supports CUDA
+13.5 (8 GB is enough). In the released build the layout model runs on the CPU; the GPU layout
+build is in [Build from source](#build-from-source).
+
+## The window
+
+![Sift converting a 23-page datasheet: Gemma describing its images while Markdown pours out of the sieve into the document](docs/brand/screenshot.png)
+
+The Convert page reads like the job itself: the PDF on top, the sieve under it (the pipeline's
+stages on its left, Convert on its right), the Markdown at the bottom. While Sift works, the sieve
+shakes and characters of Markdown pour out of its net into the document; when it is done the card
+shows the file, its numbers (pages, tables, images described, table values fixed from the PDF)
+and its first lines, with Open, Show in folder and Report.
+
+| Page | What it holds |
+|---|---|
+| Setup | the first run: the two folders, llama.cpp, the models (shown until all is ready) |
+| Convert | the PDF or folder, the run (pages, subfolders, convert again) and the saved options |
+| Engine | official llama.cpp builds: check, install or update with progress, use, roll back, delete; the backend; the model servers |
+| Models | the three pinned models: download with progress, verify (sha256), delete, check for new revisions |
+| Settings | theme, motion, how the two models share the GPU, where everything is |
+| Logs | this session's events, filterable, copyable |
+| About | versions, the GPU, the command line, credits and licenses |
+
+Every setting lives in one place: the conversion options on Convert (saved, and the command line
+reads the same file), the engine's folder, backend and start-up check on Engine, the models'
+folder on Models. Motion follows Windows' "Animation effects" unless Settings says otherwise.
+
+## Requirements (building from source)
 
 - Windows 10/11 x64; an NVIDIA GPU whose driver supports CUDA 13.5 (8 GB is enough).
 - To build: [Rust](https://rustup.rs/) 1.99 or newer and [Bun](https://bun.sh/) 1.4 or newer.
@@ -65,21 +109,25 @@ full-ocr` (surya reads every page), `--tables markdown`, `--keep-headers`, `--js
 events), `--profile`, `--answers <dir>` (keep every model answer: a re-run reuses them).
 Settings: [docs/settings.md](docs/settings.md) (`sift config show`).
 
-## The window
+## Build from source
 
-The window is Tauri 3 + SolidJS 2. On the first run it asks for the two folders, installs
-llama.cpp and downloads the models. The Engine page shows the active build, checks for new ones,
-installs them with progress and lists the installed builds (Use, Roll back, Delete). The same
-binary runs the command line when given a subcommand (`sift-app convert file.pdf`).
+The window is Tauri 3 + SolidJS 2; the same binary runs the command line when given a subcommand
+(`sift-app convert file.pdf`).
 
 ```bash
 cd app
 bun install
 bun run tauri dev        # development: Vite dev server + the app, rebuilt on change
+bun run dev              # the window alone in a browser (http://localhost:1430), with sample data:
+                         #   ?demo=running|done|folder|setup, ?page=engine, ?theme=dark, ?motion=on
 ```
 
-Release build: `cd app && bun install && bun run build && cd .. && cargo build --release -p
-sift-app`.
+The installer (`target/release/bundle/nsis/Sift_<version>_x64-setup.exe`): put `pdfium.dll`,
+`LICENSE` and `licenses/` from the pdfium-binaries `chromium/7891` archive in `runtime/pdfium/`,
+then `cd app && bun x tauri build --config src-tauri/tauri.release.conf.json`. The
+[Release workflow](.github/workflows/release.yml) does the same on GitHub and attaches the
+installer to a draft release. The app's icons and the art in `docs/brand/` come from one geometry
+(`app/src/lib/brand.ts`): `bun scripts/gen-icons.ts`.
 
 Speed, cold, on an RTX 4070 Laptop (8 GB), with descriptions and the LLM pass: 250 pages in
 355 s, 23 pages in 86 s.

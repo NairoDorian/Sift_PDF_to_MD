@@ -3,8 +3,11 @@
 One file, `settings.toml`, shared by the window and the command line:
 `%APPDATA%\com.nairodorian.sift\settings.toml`, or `Data\settings.toml` next to `sift.exe` when a
 file named `portable` sits beside it. `sift config path` prints where it is, `sift config show`
-prints it, `sift config set <section.key> <value>` changes one key; the window's Settings,
-Engine and Models pages write the same file.
+prints it, `sift config set <section.key> <value>` changes one key. The window writes the same
+file, each key from one page: Convert (`[convert]` `mode`, `image_dpi`, `tables`, `keep_headers`,
+`describer`, `[llm] enabled`), Engine (`[folders] engine_dir`, `[engine]`), Models (`[folders]
+models_dir`), Settings (`[scheduler] models`). The theme and motion are the window's own (kept in
+its web storage, not in this file).
 
 **Priority:** command-line flags > environment (`SIFT_<SECTION>_<KEY>`, e.g. `SIFT_SURYA_PARALLEL=6`)
 > a `--config <file>` given to `sift convert` (any older `sift.toml` works as is) > the settings

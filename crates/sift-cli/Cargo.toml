@@ -4,6 +4,7 @@ description = "Sift command line: the same commands the app binary runs without 
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
 
 [lib]
 path = "src/lib.rs"

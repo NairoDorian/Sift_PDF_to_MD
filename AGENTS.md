@@ -57,12 +57,16 @@ git commit                      # 6. only when the user asks
 ```
 
 **Step 1 always goes to prerelease, for every dependency.** For part of the stack the newest is
-only ever a prerelease: Solid 2 exists only on npm's `next` line (`latest` is still 1.x), Tauri 3
-only as alphas, TypeScript's newest as dev builds. A stable-only update would silently hold them
-back. The few packages that can't follow "newest published" are held on purpose and the report
-says why: `NPM_LINE_PINNED` (the Solid 2 packages follow `next` within their major and never go
-back), `NPM_MAJOR_LOCKED_PREFIXES` (`@tauri-apps/*` stays on the backend's major, so a JS API never
-talks to a different Tauri over IPC) and `CARGO_MAJOR_LOCKED` (the Tauri crates).
+only ever a prerelease: Tauri 3 only as alphas, TypeScript's newest as dev builds. A stable-only
+update would silently hold them back. The few packages that can't follow "newest published" are
+held on purpose and the report says why: `NPM_LINE_PINNED` (the Solid packages stay on their major,
+Solid 2 and its Vite plugin 3, and take the newer of their `next` and `latest` tags: each tag has
+been the stale one; following `next` alone kept Sift on 2.0.0-rc.23 after Solid 2.0 went stable),
+`NPM_MAJOR_LOCKED_PREFIXES` (`@tauri-apps/*` stays on the backend's major, so a JS API never talks
+to a different Tauri over IPC) and `CARGO_MAJOR_LOCKED` (the Tauri crates). Transitive
+dependencies move too (`cargo update`, `bun update`); the toolchain (Rust, Bun) and GitHub Actions
+are reported, never changed (`rustup update`, `bun upgrade` are the maintainer's call: they are
+machine-wide). pdfium stays on `chromium/7891` on purpose (the golden test expects its output).
 
 **A lockfile that resolves is not a lockfile that builds** (ZER0): `update-deps` always runs its
 validation (check, tests, tsc, a production Vite build, the release build, the golden test).
@@ -86,6 +90,9 @@ dependency of Sift: contributors without it run the same commands without the pr
 ```bash
 cd app && bun install && bun run tauri dev       # the window in development: Vite dev server (port 1430) + the app,
                                                  # rebuilt on change; the quickest way to test the program by hand
+cd app && bun run dev                            # the window alone in a browser (http://localhost:1430) on lib/mock.ts:
+                                                 # ?demo=running|done|folder|setup ?page=<page> ?theme=dark|light ?motion=on
+bun scripts/gen-icons.ts                         # app icons (tauri icon) + docs/brand art, from app/src/lib/brand.ts
 cargo build --release -p sift-cli                # target/release/sift.exe
 sift setup --engine-dir <dir> --models-dir <dir> # folders + newest engine + the three models (development machine: engine\, models\ at the repository root, git-ignored)
 sift convert <pdf|folder> -o <out> [--pages 1-5,137] [--no-llm] [--describer off] [--json] [--profile]
@@ -102,8 +109,11 @@ uv run --no-project python -I bench/score.py <pdf> name=out.md [name=marker.md] 
 ```
 
 The window, release build: `cd app && bun install && bun run build && cd .. && cargo build --release
--p sift-app` (`sift-app.exe`; with a subcommand it runs the command line without a window). Layout
-on the GPU: `scripts\build-cuda.cmd` (output in `target-cuda\`).
+-p sift-app` (`sift-app.exe`; with a subcommand it runs the command line without a window, printing
+to the console it was started from). The installer: `cd app && bun x tauri build --config
+src-tauri/tauri.release.conf.json` (`target/release/bundle/nsis/`; see the gotcha on its
+resources); on GitHub, Actions > Release builds it into a draft release. Layout on the GPU:
+`scripts\build-cuda.cmd` (output in `target-cuda\`).
 
 Development prerequisites: Rust 1.99+, Bun 1.4+, uv and bash (Git Bash) for the golden test and the
 scorers, and `pdfium.dll` from pdfium-binaries `chromium/7891` in `runtime/pdfium/` (git-ignored;
@@ -119,12 +129,17 @@ Sift_PDF_to_MD/
   Cargo.toml            workspace (versions in [workspace.dependencies], kept newest by update-deps)
   crates/sift-core/     everything that converts (module map below)
   crates/sift-cli/      the `sift` command line (also run by the app binary when given a subcommand)
-  app/                  Tauri 3 + SolidJS 2 window: Start (first run), Convert, Engine, Models, Settings, Logs, About
+  app/                  Tauri 3 + SolidJS 2 window: Setup (first run), Convert, Engine, Models, Settings, Logs, About
+    src/lib/            api.ts (typed commands), store.ts (shared state, events), brand.ts (the mark), mock.ts (dev preview)
+    src/components/     ui.tsx (ZER0's groups, rows, switches), SiftFlow.tsx (the sieve), Icon, Brand, Sidebar, Footer
+    src/pages/          one file per page
+    src-tauri/          main.rs (commands), tauri.conf.json, tauri.release.conf.json (installer resources), icons/
+  .github/workflows/    release.yml: manual, builds the installer into a draft release
   catalog/              surya-2.5.toml, surya-layout.toml, gemma-4-e4b-qat.toml: pinned files + sha256
   prompts/              surya-2.5/ (surya's own, word for word), describe/ (figure prompts)
   tests/golden/         the golden set (docs/GOLDEN.md)
   bench/                golden/ (run.sh, compare.py), score.py + compare_marker.py (standard-library Python)
-  scripts/              update-deps.ts (Bun), build-cuda.cmd
+  scripts/              update-deps.ts (Bun), gen-icons.ts (app icons + docs/brand art from brand.ts), build-cuda.cmd
   docs/                 AUDIT, LEARNINGS, GOLDEN, settings, events, DEPENDENCIES, blocks.schema.json
   engine/, models/      the development machine's engine and models folders (git-ignored; chosen in the settings)
   runtime/pdfium/       development copy of pdfium.dll (git-ignored)
@@ -188,9 +203,19 @@ Sift_PDF_to_MD/
   (cudarc 0.19 panics on 13.5: the script puts 13.4 first on PATH), MSVC's `cl.exe` (vcvars64) and
   `CL=/Zc:preprocessor`; any C dependency built `/MD` breaks the link with LNK2038.
   `SIFT_LAYOUT_DEVICE=cpu` forces the CPU.
-- Tauri 3 is alpha and Solid 2 a release candidate: the Tauri crates, `@tauri-apps/*` and
-  `tauri-plugin-dialog` (plugins-workspace `v3` branch) must agree; update them together with
-  `scripts/update-deps.ts`, never one by hand.
+- Tauri 3 is alpha: the Tauri crates, `@tauri-apps/*` and `tauri-plugin-dialog` (plugins-workspace
+  `v3` branch) must agree; update them together with `scripts/update-deps.ts`, never one by hand.
+- Solid 2 batches writes: a signal read right after its setter, in the same frame, still returns
+  the old value. Compute from locals (lib/store.ts does).
+- WebView2 follows Windows' "Animation effects": with them off, `prefers-reduced-motion` is
+  `reduce` (the maintainer's machine has them off). The sieve then moves gently; Settings >
+  Appearance > Motion forces it. Headless Chrome screenshots inherit the same setting
+  (`?motion=on` in the dev preview).
+- The release config (`tauri.release.conf.json`) adds the installer's resources, which must exist:
+  `target/release/sift.exe` (its `beforeBuildCommand` builds it) and `runtime/pdfium/` with
+  `pdfium.dll`, `LICENSE` and `licenses/` from the pdfium-binaries archive. The base config has
+  none, so `cargo check` and `tauri dev` work on a fresh clone. NSIS only: MSI refuses
+  prerelease versions.
 - Moving the repository folder moves the development engine and models folders with it: the
   settings file keeps absolute paths (`sift config path`; fix with `sift engine folder` /
   `sift models folder`), and cargo rebuilds `target/` from scratch.
@@ -212,6 +237,13 @@ Sift_PDF_to_MD/
   reactively.
 - Commands never block the window: long work runs on its own Rust thread and reports through
   events (`docs/events.md`).
+- **One place per setting.** A setting has one control, on the page it belongs to (conversion
+  options on Convert, the engine's on Engine, the models folder on Models); other pages link to
+  it. The Convert page's options are the saved defaults the command line reads too.
+- The look is ZER0's (DESIGN.md there): 0 corner radius except switches, 1px hairlines, no
+  shadows, tracked uppercase group titles, mono for numbers; plain CSS variables in `styles.css`,
+  amber the only accent. No network call from a page opening: only from a button (or the opt-in
+  start-up check).
 
 ## Commits and GitHub (ZER0)
 

@@ -17,7 +17,7 @@ Every event has:
 |---|---|---|
 | `job_start` | `files` (int), `output` (folder), `mode` (`hybrid` \| `full-ocr`), `describer` (`gemma` \| `off`), `engine` (llama.cpp build), `skipped` (int: up-to-date files in folder mode) | The job starts |
 | `file_start` | `index` (0-based), `total`, `pages` | A PDF is opened |
-| `stage` | `name`, `done`, `total` | Progress inside a file. Names: `text` (text layer), `layout`, `build` (pages), `surya` (tables, formulas, broken text, scanned pages, figure labels), `describe` (figures), `refine` (the LLM pass) |
+| `stage` | `name`, `done`, `total` | Progress inside a file. Names: `text` (text layer), `layout`, `build` (pages), `surya` (tables, formulas, broken text, scanned pages, figure labels), `refine` (the LLM pass: table reviews and formulas), `describe` (figures). In a file, `refine` comes before `describe`; heading levels and table merges (also the LLM pass) run after both, without a count |
 | `server` | `model` (`surya` \| `gemma`), `state` (`starting` \| `ready` \| `stopped`), `seconds` (load time, on `ready`) | Model server lifecycle: a server starts with its first job and stops when idle |
 | `warning` | `message` | Something worth showing (e.g. `cancelled`) |
 | `file_done` | `md` (path), `images` (int), `report` (path or null), `seconds`, `stats` (counts: pages, tables, figures, described, corrected table values, ...) | The `.md` is written |

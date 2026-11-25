@@ -1,0 +1,18 @@
+{
+  "$schema": "https://schema.tauri.app/config/3",
+  "build": {
+    "beforeBuildCommand": "bun run build && cargo build --release -p sift-cli"
+  },
+  "bundle": {
+    "resources": {
+      "../../target/release/sift.exe": "sift.exe",
+      "../../runtime/pdfium/pdfium.dll": "pdfium.dll",
+      "../../runtime/pdfium/LICENSE": "licenses/pdfium/LICENSE",
+      "../../runtime/pdfium/licenses/": "licenses/pdfium/",
+      "../../prompts/": "prompts/",
+      "../../catalog/": "catalog/",
+      "../../LICENSE": "LICENSE.txt",
+      "../../NOTICE": "NOTICE.txt"
+    }
+  }
+}

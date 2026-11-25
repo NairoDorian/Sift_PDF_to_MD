@@ -45,18 +45,26 @@ fn exclusive(job: impl FnOnce() + Send + 'static) -> Result<(), String> {
 
 // ---- conversion ------------------------------------------------------------------------
 
+/// One run from the Convert page. The options are the page's switches, sent as they are shown
+/// (the page also saves them, so the window and the command line share one set of defaults);
+/// `pages`, `recursive`, `force` and `output` belong to this run only.
 #[derive(Deserialize)]
 struct ConvertRequest {
     input: String,
     output: Option<String>,
     pages: Option<String>,
-    no_llm: bool,
-    describer: String,
     recursive: bool,
     force: bool,
-    mode: Option<String>,
-    tables: Option<String>,
+    /// `gemma` or `off`
+    describer: String,
+    /// the LLM pass ([llm] enabled)
+    llm: bool,
+    /// `hybrid` or `full-ocr`
+    mode: String,
+    /// `auto` or `markdown`
+    tables: String,
     keep_headers: bool,
+    image_dpi: Option<u32>,
 }
 
 #[tauri::command]
@@ -67,20 +75,18 @@ fn start_convert(app: AppHandle, req: ConvertRequest) -> Result<(), String> {
         *CANCEL.lock().unwrap() = Some(c2.clone());
         let r = (|| -> anyhow::Result<i32> {
             let mut cfg = Config::load(None)?;
-            // the page's options apply to this run only, like command-line flags
+            // set, never merged: an option switched off on the page is off for this run
             if let Some(p) = req.pages.filter(|p| !p.trim().is_empty()) {
                 cfg.convert.pages = p;
             }
-            if let Some(m) = req.mode {
-                cfg.convert.mode = m;
+            cfg.convert.mode = req.mode;
+            cfg.convert.tables = req.tables;
+            cfg.convert.keep_headers = req.keep_headers;
+            cfg.convert.describer = req.describer.clone();
+            if let Some(dpi) = req.image_dpi.filter(|d| (72..=1200).contains(d)) {
+                cfg.convert.image_dpi = dpi;
             }
-            if let Some(t) = req.tables {
-                cfg.convert.tables = t;
-            }
-            cfg.convert.keep_headers |= req.keep_headers;
-            if req.no_llm {
-                cfg.llm.enabled = false;
-            }
+            cfg.llm.enabled = req.llm;
             let events = Arc::new(sift_core::events::Events::new(false));
             let a2 = app.clone();
             events.sinks.lock().unwrap().push(Box::new(move |v| emit(&a2, "sift-event", v.clone())));
@@ -145,6 +151,61 @@ async fn pick_folder(app: AppHandle, title: String) -> Option<String> {
         .map(|p| p.display().to_string())
 }
 
+/// A one-PDF picker for the Convert page.
+#[tauri::command]
+async fn pick_pdf(app: AppHandle) -> Option<String> {
+    app.dialog()
+        .file()
+        .set_title("Choose a PDF")
+        .add_filter("PDF", &["pdf"])
+        .blocking_pick_file()
+        .and_then(|p| p.into_path().ok())
+        .map(|p| p.display().to_string())
+}
+
+/// What the Convert page shows about its input: a PDF (pages, size) or a folder (how many PDFs,
+/// at its top level and with its subfolders: the same list a conversion walks, `batch::find_pdfs`).
+#[tauri::command]
+async fn input_info(path: String) -> Result<Value, String> {
+    let p = PathBuf::from(path.trim());
+    tauri::async_runtime::spawn_blocking(move || {
+        let meta = std::fs::metadata(&p).map_err(|e| format!("{}: {e}", p.display()))?;
+        let name = p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| p.display().to_string());
+        let dir = p.parent().map(|d| d.display().to_string()).unwrap_or_default();
+        if meta.is_dir() {
+            let top = sift_core::batch::find_pdfs(&p, false).len();
+            let all = sift_core::batch::find_pdfs(&p, true).len();
+            return Ok(json!({"kind": "folder", "name": name, "dir": dir, "path": p.display().to_string(), "pdfs": top, "pdfs_all": all}));
+        }
+        if !p.extension().is_some_and(|e| e.eq_ignore_ascii_case("pdf")) {
+            return Err(format!("{name} is not a PDF"));
+        }
+        // the page count is a nicety: a PDF pdfium cannot open still goes to the converter,
+        // which reports the reason
+        let pages = sift_core::pdf::pdfium::Document::open(&p, false).ok().map(|d| d.page_count);
+        Ok(json!({"kind": "pdf", "name": name, "dir": dir, "path": p.display().to_string(), "size": meta.len(), "pages": pages}))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// The first lines of a converted Markdown file, for the result card.
+#[tauri::command]
+async fn md_preview(path: String, max_bytes: Option<usize>) -> Result<String, String> {
+    let p = PathBuf::from(&path);
+    if !p.extension().is_some_and(|e| e.eq_ignore_ascii_case("md")) {
+        return Err("not a Markdown file".into());
+    }
+    use std::io::Read;
+    let limit = max_bytes.unwrap_or(6000).min(64_000) as u64;
+    let mut bytes = Vec::new();
+    std::fs::File::open(&p)
+        .and_then(|f| f.take(limit).read_to_end(&mut bytes))
+        .map_err(|e| format!("{}: {e}", p.display()))?;
+    // a cut inside a multi-byte character leaves a replacement character at the end: drop it
+    Ok(String::from_utf8_lossy(&bytes).trim_end_matches('\u{FFFD}').to_string())
+}
+
 /// Set the engine or models folder. `move_files`: move what the current folder holds into the
 /// new one (same drive: a rename); otherwise the new folder is used as it is. The old folder is
 /// never deleted here.
@@ -184,9 +245,37 @@ async fn set_folder(kind: String, path: String, move_files: bool) -> Result<Valu
     Ok(json!({"moved": moved, "old": old}))
 }
 
+/// Open a folder in Explorer, or a file with its default app (the converted `.md`, the report).
 #[tauri::command]
-async fn open_folder(path: String) -> Result<(), String> {
+async fn open_path(path: String) -> Result<(), String> {
+    if !Path::new(&path).exists() {
+        return Err(format!("{path} does not exist"));
+    }
     std::process::Command::new("explorer").arg(&path).spawn().map(|_| ()).map_err(|e| e.to_string())
+}
+
+/// Show a file selected in its folder.
+#[tauri::command]
+async fn reveal_path(path: String) -> Result<(), String> {
+    use std::os::windows::process::CommandExt;
+    if !Path::new(&path).exists() {
+        return Err(format!("{path} does not exist"));
+    }
+    // explorer parses `/select,"<path>"` itself: the argument goes as written, not re-quoted
+    std::process::Command::new("explorer")
+        .raw_arg(format!("/select,\"{path}\""))
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+/// The About page's links (the repository, the licenses), in the default browser.
+#[tauri::command]
+async fn open_url(url: String) -> Result<(), String> {
+    if !url.starts_with("https://") {
+        return Err("only https links open".into());
+    }
+    std::process::Command::new("explorer").arg(&url).spawn().map(|_| ()).map_err(|e| e.to_string())
 }
 
 /// What the window needs to know at a glance (onboarding, footer, menu dot).
@@ -196,6 +285,7 @@ async fn overview() -> Value {
     let models: Vec<Value> = sift_core::models::all().unwrap_or_default().iter().map(|m| json!(m.status())).collect();
     let s = sift_core::engine::status();
     json!({
+        "version": env!("CARGO_PKG_VERSION"),
         "settings_file": sift_core::paths::settings_file().display().to_string(),
         "portable": sift_core::paths::portable_dir().is_some(),
         "engine_dir": cfg.folders.engine_dir,
@@ -367,16 +457,30 @@ async fn about_info() -> Value {
     json!({
         "version": env!("CARGO_PKG_VERSION"),
         "settings": sift_core::paths::settings_file().display().to_string(),
+        "exe_dir": std::env::current_exe().ok().and_then(|e| e.parent().map(|d| d.display().to_string())).unwrap_or_default(),
         "gpus": gpus,
         "driver_cuda": sift_core::engine::driver_cuda().map(|(a, b)| format!("{a}.{b}")),
         "cpu_threads": std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1),
     })
 }
 
+// A release build is a window program (no console of its own), so its command-line mode borrows
+// the console it was started from; without this every line it prints is lost.
+#[cfg(all(windows, not(debug_assertions)))]
+#[link(name = "kernel32")]
+unsafe extern "system" {
+    fn AttachConsole(process_id: u32) -> i32;
+}
+
 fn main() {
     let args: Vec<std::ffi::OsString> = std::env::args_os().collect();
     if args.len() > 1 {
         // headless: the `sift` command line
+        #[cfg(all(windows, not(debug_assertions)))]
+        unsafe {
+            const ATTACH_PARENT_PROCESS: u32 = u32::MAX;
+            AttachConsole(ATTACH_PARENT_PROCESS);
+        }
         match sift_cli::run_cli(args) {
             Ok(code) => std::process::exit(code),
             Err(e) => {
@@ -411,8 +515,13 @@ fn main() {
             settings_get,
             settings_save,
             pick_folder,
+            pick_pdf,
+            input_info,
+            md_preview,
             set_folder,
-            open_folder,
+            open_path,
+            reveal_path,
+            open_url,
             overview,
             engine_status,
             engine_check,

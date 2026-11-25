@@ -187,4 +187,4 @@ no prompt cache.
 | answer store | `answers.rs` |
 | Markdown | `render/markdown.rs` |
 | command line | `crates/sift-cli/src/lib.rs` |
-| window | `app/src-tauri/src/main.rs` (commands, events), `app/src/App.tsx` (pages) |
+| window | `app/src-tauri/src/main.rs` (commands, events), `app/src/lib/store.ts` (state, event listeners, progress), `app/src/pages/` (one file per page), `app/src/components/SiftFlow.tsx` (the sieve) |

@@ -4,6 +4,7 @@ description = "Sift desktop app (Tauri 3 + SolidJS 2): the same binary runs head
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+rust-version.workspace = true
 
 [[bin]]
 name = "sift-app"
