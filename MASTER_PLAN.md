@@ -23,8 +23,9 @@ manager: detect new builds, install, update, roll back, from the Engine page or 
 
 ## Start here (handover for the next AI agent)
 
-**Status (2026-11-25).** The final architecture is in place, the code is public, and the first
-release (1.0.0-alpha.2, a Windows installer) is ready to build from the Release workflow:
+**Status (2026-11-25).** The final architecture is in place, the code is public, and releases ship
+as Windows installers from the Release workflow (1.0.0-alpha.2 was the first; 1.0.0-alpha.3
+carries the audit's fixes, the server panels, the meters and the strainer-only mark):
 - **Repository:** <https://github.com/NairoDorian/Sift_PDF_to_MD>, first commit 2026-11-19. Everything
   is at the repository root (the `V1/` folder was flattened that day). The first, Python version
   and the multi-model experiments are gone; the Python version's recorded run lives on as the
@@ -383,9 +384,12 @@ the text layer).
    1,000 PDF words at most 46.8 and 121.5; report reviewed; logs read. Engine updated to
    b12728-cuda-13.5 on 2026-11-25 with the user's OK (b12600 kept as previous): Wio's Markdown is
    identical to b12600's outside the image descriptions, scorecard 122.26 on both builds
-   (docs/LEARNINGS.md: the 0.7 over the bar is not the code, which replays the reference to 121.52, but the live CPU layout and live answers; the bar was set with the GPU layout build). Still to do: the
-   timings, on an idle machine (that day's runs were 103 to 116 s with the machine busy), and
-   LR20xx.
+   (docs/LEARNINGS.md: the 0.7 over the bar is not the code, which replays the reference to
+   121.52, nor the layout device (the GPU layout build scores 122.26 too), but the live answers).
+   Timed on an idle machine the same night: LR20xx 367.0 s / 359.8 s and Wio 87.1 s / 89.3 s
+   (layout on the CPU / on the GPU): within run-to-run noise of the bars on the GPU build, about
+   3 % slower on LR20xx with the CPU layout (surya waits for pages); LR20xx scores 46.58 / 46.59
+   live (bar 46.8). Done.
    The window was redesigned and walked page by page on 2026-11-25 (dev preview and the real
    app); a live conversion from the window is part of this check.
 2. **Window, ZER0 parity**: done 2026-11-25: each llama-server's log, followed live, and its
@@ -423,7 +427,9 @@ the text layer).
    engines answer slightly differently: Wio scores 122.26 live (b12600 and b12728, layout on
    the CPU or the GPU; docs/LEARNINGS.md), which is the bar for a live run.
    Also: surya's table values verified at 99.5 % or more, and no new unresolved table values.
-3. **Speed:** not slower than 355 s (LR20xx) and 86 s (Wio), cold, on this machine.
+3. **Speed:** not slower than 355 s (LR20xx) and 86 s (Wio), cold, on this machine, with the GPU
+   layout build; Gemma alone varies about 7 s from run to run, so judge with two runs. The
+   installer's build (layout on the CPU) measured 367 s and 87 s (2026-11-25).
 4. **Engine:** every build verified before it becomes active; rollback always possible; nothing
    downloaded without the user's action.
 5. **Viewer check** (VS Code, Obsidian, GitHub) during development.

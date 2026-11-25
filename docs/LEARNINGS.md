@@ -79,6 +79,20 @@ to beat.
   waited for a stop signal that never came in a console-less run).
 - Layout runs batch by batch so surya gets its first tables after 8 pages.
 - Cold, LLM pass on: LR20xx (250 pages) 355 s (surya 184 s, Gemma 159 s), Wio (23 pages) 86 s.
+- Re-timed on an idle machine (2026-11-25, night; b12728, cold, LLM pass on), one run each:
+
+  | | layout on the CPU (the installer's build) | layout on the GPU (`build-cuda.cmd`) |
+  |---|---|---|
+  | LR20xx | 367.0 s (surya 206 s, Gemma 152 s) | 359.8 s (surya 191 s, Gemma 165 s) |
+  | Wio | 87.1 s (surya 24 s, Gemma 56 s) | 89.3 s (surya 21 s, Gemma 63 s) |
+
+  (server times from their log files' first and last writes). The GPU cuts LR20xx's layout from
+  108 s to 31 s but the total moves 7 s: surya reads tables while the layout goes on, so the
+  models set the pace; with the layout on the CPU surya waits for pages (about 15 s more). Gemma
+  varies about 7 s from run to run on either PDF (its descriptions vary), so the GPU build is
+  within noise of the bars and the CPU build about 3 % slower on LR20xx, for that reason only.
+  The same runs' scorecard: LR20xx 46.58 (CPU layout) and 46.59 (GPU layout), better than the
+  golden output's 46.61 (marker 56.13); Wio 122.26 on both.
 - Engine b12600 -> b12728 (2026-11-25), Wio cold, same release binary (CPU layout), back to back:
   the Markdown is identical outside the image descriptions (Gemma's wording varies run to run,
   also between two runs of one build); scorecard v2 122.26 errors per 1,000 PDF words on both
