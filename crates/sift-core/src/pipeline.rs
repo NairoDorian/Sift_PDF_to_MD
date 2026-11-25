@@ -997,9 +997,8 @@ impl<'a> FileJob<'a> {
         }
         self.report.extend(reports);
         if let Some(h) = turn_figure {
-            if !self.table_to_figure(page, task.block, &h) {
-                // page not found: treat like "no table"
-            }
+            // false when the page is gone: then it is treated like "no table"
+            self.table_to_figure(page, task.block, &h);
         }
     }
 

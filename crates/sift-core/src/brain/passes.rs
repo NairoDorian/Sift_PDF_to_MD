@@ -445,7 +445,7 @@ fn most_common(it: impl Iterator<Item = i64>) -> Option<(i64, usize)> {
             None => v.push((x, 1)),
         }
     }
-    py::first_max_by(v.into_iter(), |e| e.1)
+    py::first_max_by(v, |e| e.1)
 }
 
 /// Python json.dumps(str) (ensure_ascii=True).

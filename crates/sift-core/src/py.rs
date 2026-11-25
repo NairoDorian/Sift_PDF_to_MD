@@ -418,25 +418,28 @@ macro_rules! pyre_static {
 }
 
 /// Python `max(iterable, key=...)`: the FIRST maximal element (Rust's max_by returns the last).
+/// CPython replaces the best only when `key > best`: an equal key, or one that does not compare
+/// (NaN), keeps the current best.
 pub fn first_max_by<T, K: PartialOrd>(items: impl IntoIterator<Item = T>, key: impl Fn(&T) -> K) -> Option<T> {
     let mut best: Option<(T, K)> = None;
     for it in items {
         let k = key(&it);
         match &best {
-            Some((_, bk)) if !(k > *bk) => {}
+            Some((_, bk)) if k.partial_cmp(bk) != Some(std::cmp::Ordering::Greater) => {}
             _ => best = Some((it, k)),
         }
     }
     best.map(|(t, _)| t)
 }
 
-/// Python `min(iterable, key=...)`: the first minimal element.
+/// Python `min(iterable, key=...)`: the first minimal element (replaced only when `key < best`;
+/// equal or incomparable keys keep the current one, as in CPython).
 pub fn first_min_by<T, K: PartialOrd>(items: impl IntoIterator<Item = T>, key: impl Fn(&T) -> K) -> Option<T> {
     let mut best: Option<(T, K)> = None;
     for it in items {
         let k = key(&it);
         match &best {
-            Some((_, bk)) if !(k < *bk) => {}
+            Some((_, bk)) if k.partial_cmp(bk) != Some(std::cmp::Ordering::Less) => {}
             _ => best = Some((it, k)),
         }
     }
@@ -457,49 +460,6 @@ pub fn median(v: &[f64]) -> f64 {
         return 0.0;
     }
     if n % 2 == 1 { s[n / 2] } else { (s[n / 2 - 1] + s[n / 2]) / 2.0 }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn classes_match_python() {
-        assert!(is_space('\x1c'));
-        assert!(!'\x1c'.is_whitespace());
-        assert!(is_alnum('²'));
-        assert!(str_isdigit("²"));
-        assert!(!str_isdecimal("²"));
-        assert!(str_isupper("TX-1"));
-        assert!(!str_isupper("123"));
-        assert_eq!(strip("\x1c a \u{3000}"), "a");
-        assert_eq!(split_ws("  a  b\tc "), vec!["a", "b", "c"]);
-    }
-
-    #[test]
-    fn regex_word_class() {
-        let r = Re::new(r"(?<![\w.])\d+");
-        assert!(r.is_match("x 12"));
-        assert!(!r.is_match("²12")); // Python: '²' is \w
-        let r = ReFull::new(r"\w+");
-        assert!(r.is("mm²"));
-    }
-
-    #[test]
-    fn float_repr_like_python() {
-        assert_eq!(float_repr(1.0), "1.0");
-        assert_eq!(float_repr(0.1), "0.1");
-        assert_eq!(float_repr(1e16), "1e+16");
-        assert_eq!(float_repr(1.5e-5), "1.5e-05");
-        assert_eq!(float_repr(123456.0), "123456.0");
-    }
-
-    #[test]
-    fn rounding() {
-        assert_eq!(round_half_even(2.5), 2.0);
-        assert_eq!(round_half_even(3.5), 4.0);
-        assert_eq!(round_n(0.125, 2), 0.12);
-    }
 }
 
 /// Python `str.strip(chars)`.
@@ -607,4 +567,47 @@ pub fn re_escape(s: &str) -> String {
         o.push(c);
     }
     o
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn classes_match_python() {
+        assert!(is_space('\x1c'));
+        assert!(!'\x1c'.is_whitespace());
+        assert!(is_alnum('²'));
+        assert!(str_isdigit("²"));
+        assert!(!str_isdecimal("²"));
+        assert!(str_isupper("TX-1"));
+        assert!(!str_isupper("123"));
+        assert_eq!(strip("\x1c a \u{3000}"), "a");
+        assert_eq!(split_ws("  a  b\tc "), vec!["a", "b", "c"]);
+    }
+
+    #[test]
+    fn regex_word_class() {
+        let r = Re::new(r"(?<![\w.])\d+");
+        assert!(r.is_match("x 12"));
+        assert!(!r.is_match("²12")); // Python: '²' is \w
+        let r = ReFull::new(r"\w+");
+        assert!(r.is("mm²"));
+    }
+
+    #[test]
+    fn float_repr_like_python() {
+        assert_eq!(float_repr(1.0), "1.0");
+        assert_eq!(float_repr(0.1), "0.1");
+        assert_eq!(float_repr(1e16), "1e+16");
+        assert_eq!(float_repr(1.5e-5), "1.5e-05");
+        assert_eq!(float_repr(123456.0), "123456.0");
+    }
+
+    #[test]
+    fn rounding() {
+        assert_eq!(round_half_even(2.5), 2.0);
+        assert_eq!(round_half_even(3.5), 4.0);
+        assert_eq!(round_n(0.125, 2), 0.12);
+    }
 }

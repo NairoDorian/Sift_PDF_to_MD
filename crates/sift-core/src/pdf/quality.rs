@@ -86,6 +86,6 @@ pub fn has_ink(img: &Rgb, white: u8, min_fraction: f64) -> bool {
     if n == 0 {
         return false;
     }
-    let dark = img.data.chunks_exact(3).filter(|p| luma(p[0], p[1], p[2]) < white).count();
+    let dark = img.data.as_chunks::<3>().0.iter().filter(|p| luma(p[0], p[1], p[2]) < white).count();
     dark as f64 / n as f64 > min_fraction
 }

@@ -98,6 +98,6 @@ mod tests {
     fn key_matches_v0_formula() {
         // python: hashlib.sha256("\0".join(["surya", "p", "a,b", "64", ""]).encode()).hexdigest()
         let k = request_key("surya", "p", &["a".into(), "b".into()], 64, "");
-        assert_eq!(k, sha256_hex("surya\0p\0a,b\064\0".as_bytes()));
+        assert_eq!(k, sha256_hex("surya\x00p\x00a,b\x0064\x00".as_bytes()));
     }
 }

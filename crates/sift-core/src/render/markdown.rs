@@ -236,9 +236,7 @@ pub fn block_markdown(b: &Block, tables: &str) -> String {
         }
         "paragraph" | "footnote" | "toc" => t,
         "caption" => {
-            if t.starts_with('*') {
-                t
-            } else if t.is_empty() {
+            if t.starts_with('*') || t.is_empty() {
                 t
             } else {
                 format!("*{t}*")

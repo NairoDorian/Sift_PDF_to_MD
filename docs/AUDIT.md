@@ -126,26 +126,52 @@ From the dependency update and checks run on 2026-11-19, before the first commit
 ## Findings
 
 One line each: `file:line` — what is wrong — severity (bug / risk / cleanup) — golden impact —
-status. The first entries are the warnings the baseline already shows; none is a known bug.
+status. The first entries are the warnings the baseline showed; none was a known bug.
 
-- `pdf/pdfium.rs:33,41,55` — `SizeF` and `FormFillInfo` are more private than the `Api` fields
-  that use them (also a rustc warning in every build) — cleanup — none — open
-- `render/markdown.rs:239-241` — caption: two `if` branches return the same `t` (merge with `||`)
-  — cleanup — none expected — open
-- `answers.rs:101` — test string `"…\064…"` reads as octal to clippy; Rust has no octal escapes, so
-  it is `\0` + `"64"` exactly as the Python formula means (write `\x0064` or split the literal) —
-  cleanup (test only) — none — open
-- `py.rs:426,439` — negated comparisons on floats (`!(a < b)`): check NaN handling matches Python's
-  — risk — possible — open
-- `py.rs:463` — items after the test module — cleanup — none — open
-- `pdf/pdfium.rs:138`, `pipeline.rs:943` — collapsible `if` — cleanup — none — open
-- `build/tables.rs:539`, `events.rs:16` — very complex types — cleanup — none — open
-- `build/tables.rs:694` — `sort_by` that could be `sort_by_key` (keep the sort stable and the
-  first-wins order) — cleanup — possible — open
-- `layout/rfdetr.rs:90` — 8 arguments — cleanup — none — open
-- `layout/rfdetr.rs:323`, `pdf/quality.rs:89` — `chunks_exact` with a constant size (`as_chunks`)
-  — cleanup — none — open
-- `imaging.rs:137`, `layout/rfdetr.rs:553` — index loops — cleanup — none (keep the arithmetic
-  order: Pillow's results depend on it) — open
-- `brain/passes.rs:448`, `py.rs:421` — needless `.into_iter()` — cleanup — none — open
-- `surya/compact.rs:199` — manual `Vec::pop_if` — cleanup — none — open
+**Round 1 (2026-11-25): clippy is clean (0 warnings, Rust 1.102 nightly), golden 14/14 after the
+round, 14 unit tests pass.** Code the golden test does not run (the rf-detr layout, replayed from
+stored layouts) only got rewrites that keep the same operations in the same order.
+
+- `pdf/pdfium.rs:33,41,55` — `SizeF` and `FormFillInfo` more private than the `Api` fields that
+  use them — cleanup — none — fixed: the `Api` function pointers are private to the module (no
+  other module called them; the compiler now keeps it that way)
+- `render/markdown.rs:239-241` — caption: two `if` branches return the same `t` — cleanup — none
+  — fixed: one condition with `||`
+- `answers.rs:101` — test string `"…\064…"` reads as octal to clippy (it is `\0` + `"64"`) —
+  cleanup (test only) — none — fixed: written `\x00` + `"64"`, same bytes
+- `py.rs:426,439` — negated comparisons on `PartialOrd` keys — risk — none — fixed: the same rule
+  through `partial_cmp`, documented: CPython's `max`/`min` replace the best only on a strictly
+  greater/smaller key, so an equal or incomparable (NaN) key keeps it, exactly as before
+- `py.rs:463` — items after the test module — cleanup — none — fixed: the module moved last
+- `pdf/pdfium.rs:138`, `pipeline.rs:999` — collapsible `if` — cleanup — none — fixed: a
+  let-chain; the pipeline one only called `table_to_figure` for its effect, now a plain call
+- `build/tables.rs:539`, `events.rs:16` — very complex types — cleanup — none — fixed: `GridMap`
+  and `Sink` type aliases
+- `build/tables.rs:694` — `sort_by` that could be `sort_by_key` — cleanup — none — fixed:
+  `sort_by_key(Reverse(len))`, still a stable sort, ties keep their order
+- `layout/rfdetr.rs:90` — 8 arguments — cleanup — none — kept: the 8 plain values of the resize
+  it ports, with a documented `allow`
+- `layout/rfdetr.rs:323`, `pdf/quality.rs:89` — `chunks_exact` with a constant size — cleanup —
+  none — fixed: `as_chunks::<3>()` (same elements, same order, remainder ignored as before)
+- `imaging.rs:137`, `layout/rfdetr.rs:553` — index loops — cleanup — none — fixed: iterators over
+  the same indices in the same order (Pillow's sums keep their order)
+- `brain/passes.rs:448`, `py.rs:421` — needless `.into_iter()` — cleanup — none — fixed
+- `surya/compact.rs:199` — manual `Vec::pop_if` — cleanup — none — fixed: `pop_if`
+- `engine.rs:use_build` — a build name could be a path: `engine_dir.join(name)` accepted an
+  absolute path or `..`, and the verify step runs that folder's `llama-server` (window: Use;
+  command line: `sift engine use`) — risk — none (not the conversion path) — fixed: the name must
+  be in the engine folder's own list, as `remove` and `remove_cuda_runtime` already did; checked
+  with `..\engine`, `C:\Windows` and an unknown build (all refused, nothing switched)
+- `app/src-tauri/src/main.rs:open_path` — the window's open command handed any path to Explorer,
+  which runs a program it is given — risk — none — fixed: folders, `.md` and `.txt` only (what
+  Sift writes); `reveal_path` only selects, `open_url` only opens `https://`
+- `.github/workflows/release.yml` — GitHub could not parse it (a plain YAML value holding
+  `": "`), so it had no trigger and every push showed a failed run — bug — none — fixed in
+  `bafaee5`; check workflows with a YAML parser before pushing
+- `Cargo.toml` — `[workspace.package] rust-version` declared but inherited by no crate, so the
+  minimum Rust (1.99) was never enforced (a nightly cargo lint) — cleanup — none — fixed in
+  `b685ab9`: every crate inherits it
+
+Still to review (sections 1 to 5 above): the untrusted-input paths (pdfium FFI lifetimes, model
+output parsing in `surya/` and `brain/`), the live server path, cancellation, the `unwrap`s on
+user-controlled input, and targeted tests for the parsers.

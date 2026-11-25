@@ -13,8 +13,11 @@ pub struct Events {
     last_stage: Mutex<std::collections::HashMap<(String, String), i64>>,
     lock: Mutex<()>,
     /// extra listeners (the window): every event as a JSON value
-    pub sinks: Mutex<Vec<Box<dyn Fn(&Value) + Send>>>,
+    pub sinks: Mutex<Vec<Sink>>,
 }
+
+/// A listener that receives every event (the window's bridge to its page).
+pub type Sink = Box<dyn Fn(&Value) + Send>;
 
 impl Events {
     pub fn new(json: bool) -> Events {

@@ -585,10 +585,13 @@ pub fn list() -> Result<Vec<Installed>> {
 /// Make an installed build active, after the same verify step as an install.
 pub fn use_build(name: &str, log: &dyn Fn(&str)) -> Result<PathBuf> {
     let dir = engine_dir()?;
-    let target = dir.join(name);
-    if !target.is_dir() {
-        bail!("{name} is not installed in {}", dir.display());
-    }
+    // a build of the engine folder's own list, never a path: `dir.join(name)` would accept an
+    // absolute path or `..`, and the verify step below runs that folder's llama-server
+    let target = list()?
+        .into_iter()
+        .find(|i| i.name == name)
+        .map(|i| i.dir)
+        .ok_or_else(|| anyhow!("{name} is not installed in {}", dir.display()))?;
     let (tag, backend) = name.split_once('-').unwrap_or((name, ""));
     verify(&target, tag, backend, log)?;
     let cur = std::fs::read_to_string(current_file()?).ok().map(|s| s.trim().to_string());

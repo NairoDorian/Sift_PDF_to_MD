@@ -144,9 +144,10 @@ fn precompute(in_size: usize, in0: f64, in1: f64, out_size: usize) -> Coeffs {
         }
         let count = (xmax - xmin).max(0) as usize;
         let k = &mut pre[xx * ksize..(xx + 1) * ksize];
-        for x in 0..count {
+        // same order and arithmetic as Pillow's loop (its sums depend on both)
+        for (x, kx) in k.iter_mut().enumerate().take(count) {
             let w = lanczos((x as f64 + xmin as f64 - center + 0.5) * ss);
-            k[x] = w;
+            *kx = w;
             ww += w;
         }
         for v in k.iter_mut().take(count) {

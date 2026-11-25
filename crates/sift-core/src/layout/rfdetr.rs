@@ -87,6 +87,8 @@ fn bicubic_aa_filter(x: f32) -> f32 {
 }
 
 /// [C][H][W] planes -> [C][oh][ow], separable (x then y), f32.
+// eight plain values, the arguments of the resize it ports (a struct would only rename them)
+#[allow(clippy::too_many_arguments)]
 fn resize_planes(
     src: &[f32],
     c: usize,
@@ -320,7 +322,7 @@ impl RfDetr {
     fn preprocess(img: &Rgb) -> Vec<f32> {
         let (w, h) = (img.width, img.height);
         let mut planes = vec![0f32; 3 * w * h];
-        for (i, p) in img.data.chunks_exact(3).enumerate() {
+        for (i, p) in img.data.as_chunks::<3>().0.iter().enumerate() {
             for c in 0..3 {
                 planes[c * w * h + i] = (p[c] as f32 / 255.0 - MEAN[c]) / STD[c];
             }
@@ -550,8 +552,8 @@ fn sine_embed(pos: &Tensor) -> Result<Tensor> {
     for r in &p {
         for &comp in &[1usize, 0, 2, 3] {
             let e = r[comp] * scale;
-            for i in 0..dim {
-                let v = e / dim_t[i];
+            for (i, d) in dim_t.iter().enumerate() {
+                let v = e / d;
                 out.push(if i % 2 == 0 { v.sin() } else { v.cos() });
             }
         }

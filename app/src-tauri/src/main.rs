@@ -245,11 +245,21 @@ async fn set_folder(kind: String, path: String, move_files: bool) -> Result<Valu
     Ok(json!({"moved": moved, "old": old}))
 }
 
-/// Open a folder in Explorer, or a file with its default app (the converted `.md`, the report).
+/// Open a folder in Explorer, or a file with its default app: only what Sift writes (the
+/// converted `.md`, the `.txt` report). Explorer *runs* a program it is handed, so nothing else
+/// goes through here.
 #[tauri::command]
 async fn open_path(path: String) -> Result<(), String> {
-    if !Path::new(&path).exists() {
+    let p = Path::new(&path);
+    if !p.exists() {
         return Err(format!("{path} does not exist"));
+    }
+    let ours = p
+        .extension()
+        .and_then(|e| e.to_str())
+        .is_some_and(|e| e.eq_ignore_ascii_case("md") || e.eq_ignore_ascii_case("txt"));
+    if !p.is_dir() && !ours {
+        return Err(format!("{path}: only folders, Markdown and reports open from here"));
     }
     std::process::Command::new("explorer").arg(&path).spawn().map(|_| ()).map_err(|e| e.to_string())
 }

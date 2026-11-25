@@ -49,10 +49,12 @@ pub const FORMTYPE_NONE: c_int = 0;
 
 macro_rules! api {
     ($($name:ident : fn($($arg:ty),*) $(-> $ret:ty)?;)*) => {
+        // the function pointers stay private to this module: every pdfium call goes through
+        // the wrappers below, under the lock (and their FFI structs are private too)
         #[allow(non_snake_case)]
         pub struct Api {
             _lib: Library,
-            $(pub $name: unsafe extern "C" fn($($arg),*) $(-> $ret)?,)*
+            $($name: unsafe extern "C" fn($($arg),*) $(-> $ret)?,)*
         }
         impl Api {
             unsafe fn load(lib: Library) -> Result<Api> {
@@ -138,13 +140,13 @@ pub fn default_library_candidates() -> Vec<PathBuf> {
     if let Ok(p) = std::env::var("SIFT_PDFIUM") {
         v.push(PathBuf::from(p));
     }
-    if let Ok(exe) = std::env::current_exe() {
-        if let Some(d) = exe.parent() {
-            v.push(d.join(name));
-            // dev builds: target/<profile>/sift.exe -> <repository>/runtime/pdfium/
-            for anc in d.ancestors().take(5) {
-                v.push(anc.join("runtime").join("pdfium").join(name));
-            }
+    if let Ok(exe) = std::env::current_exe()
+        && let Some(d) = exe.parent()
+    {
+        v.push(d.join(name));
+        // dev builds: target/<profile>/sift.exe -> <repository>/runtime/pdfium/
+        for anc in d.ancestors().take(5) {
+            v.push(anc.join("runtime").join("pdfium").join(name));
         }
     }
     v

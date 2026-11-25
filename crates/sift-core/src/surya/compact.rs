@@ -196,8 +196,7 @@ pub fn decode(text: &str) -> String {
         pending_box = None;
         if !close {
             if name == "td" || name == "th" {
-                if stack.last().is_some_and(|t| t == "td" || t == "th") {
-                    let t = stack.pop().unwrap();
+                if let Some(t) = stack.pop_if(|t| *t == "td" || *t == "th") {
                     out.push(format!("</{t}>"));
                 }
             } else if name == "tr" {

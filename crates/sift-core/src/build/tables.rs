@@ -535,8 +535,11 @@ pub fn geometry_score(table: &Table, lines: &[Line], bbox: &[f64; 4]) -> Option<
     if total >= 4 { Some(ok as f64 / total as f64) } else { None }
 }
 
+/// A position in a table's grid mapped to another: (row, col) -> (row, index) or the reverse.
+type GridMap = HashMap<(usize, usize), (usize, usize)>;
+
 /// (row, col) -> covering cell (r, i in row) and cell -> origin (row, col).
-fn grid_of(table: &Table) -> (HashMap<(usize, usize), (usize, usize)>, HashMap<(usize, usize), (usize, usize)>) {
+fn grid_of(table: &Table) -> (GridMap, GridMap) {
     let mut cover: HashMap<(usize, usize), (usize, usize)> = HashMap::new();
     let mut origin: HashMap<(usize, usize), (usize, usize)> = HashMap::new();
     for (r, row) in table.rows.iter().enumerate() {
@@ -691,7 +694,8 @@ const ARROWS: [(&str, &str); 17] = [
 /// sorted(keys, key=len, reverse=True) is stable: equal lengths keep dict order.
 fn by_len_desc(v: &[(&'static str, &'static str)]) -> Vec<(&'static str, &'static str)> {
     let mut s = v.to_vec();
-    s.sort_by(|a, b| py::char_len(b.0).cmp(&py::char_len(a.0)));
+    // a stable sort on the reversed length: ties keep their order, as Python's does
+    s.sort_by_key(|a| std::cmp::Reverse(py::char_len(a.0)));
     s
 }
 
