@@ -1,11 +1,14 @@
-Sift report for Wio-LR2021 Module Datasheet.pdf (2026-11-06 22:08)
+Sift report for Wio-LR2021 Module Datasheet.pdf (2026-11-25 05:39)
 Items Sift could not resolve automatically. Everything else was verified or corrected.
 
 page 11, images/p011-figure-01.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 10, 15, 19.4, 38.5
 page 12, images/p012-figure-01.png: please check these description numbers, not found in the figure's PDF text: 0, 10, 15, 22, 25, -15, 120, 19.7, 38.5, 119.4
+page 12, text: surya read 2 words that the PDF text of this page does not have (kept surya's reading; the PDF gives no usable text there): 'seeed', 'studio'
 page 13, images/p013-figure-01.png: please check these description numbers, not found in the figure's PDF text: 0, 12, 15, 35, -17, -20, 9.7, 13.6, 28.4
 page 15, images/p015-figure-01.png: please check these description numbers, not found in the figure's PDF text: 2, 12, 14, 20, -20, 2.4, 2.5, 4.5, 915
 page 17, images/p017-diagram-01.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 21
+page 17, text: surya read 2 words that the PDF text of this page does not have (kept surya's reading; the PDF gives no usable text there): 'seeed', 'studio'
+page 19, text: surya read 2 words that the PDF text of this page does not have (kept surya's reading; the PDF gives no usable text there): 'seeed', 'studio'
 page 20, images/p020-figure-01.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 30
 page 21, table: LLM review suggested changes that are not in the PDF text; kept the checked version
 page 21, table: PDF text not in surya's table: 'S0', 'EIA-481-D', 'standard.'

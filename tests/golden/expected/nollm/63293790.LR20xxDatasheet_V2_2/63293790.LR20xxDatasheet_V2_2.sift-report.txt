@@ -1,4 +1,4 @@
-Sift report for 63293790.LR20xxDatasheet_V2_2.pdf (2026-11-06 20:53)
+Sift report for 63293790.LR20xxDatasheet_V2_2.pdf (2026-11-25 05:39)
 Items Sift could not resolve automatically. Everything else was verified or corrected.
 
 page 72, images/p072-diagram-01.png: please check these description numbers, not found in the figure's PDF text: 0, 16
@@ -11,6 +11,11 @@ page 205, images/p205-figure-01.png: please check these description numbers, not
 page 228, table: PDF text not in surya's table: 'det1'
 page 239, images/p239-figure-02.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 1
 page 242, images/p242-diagram-01.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 1.1, 0.03, 0.003, 0.004, 0.007, 0.010, 0.012, 0.016, 0.020, 0.140, 0.146, 0.150
+page 242, text: surya read 1 word that the PDF text of this page does not have (kept surya's reading; the PDF gives no usable text there): 'NOTES'
+page 242, text: surya read 14 words that the PDF text of this page does not have (kept surya's reading; the PDF gives no usable text there): 'CONTROLLING', 'DIMENSIONS', 'ARE', 'MILLIMETERS', 'ANGLES', 'DEGREES', '2', 'COPLANARITY', 'APPLIES', 'THE', 'EXPOSED', 'PAD' and 2 more
+page 243, text: surya read 8 words that the PDF text of this page does not have (kept surya's reading; the PDF gives no usable text there): 'for', 'the', '5', '5mm', 'MLPQ', '32', 'Lead', 'package'
 page 244, images/p244-diagram-01.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 1
+page 244, text: surya read 1 word that the PDF text of this page does not have (kept surya's reading; the PDF gives no usable text there): 'NOTES'
+page 244, text: surya read 40 words that the PDF text of this page does not have (kept surya's reading; the PDF gives no usable text there): '1', 'THIS', 'LAND', 'PATTERN', 'FOR', 'REFERENCE', 'PURPOSES', 'ONLY', 'CONSULT', 'YOUR', 'MANUFACTURING', 'GROUP' and 28 more
 page 245, images/p245-diagram-01.png: please check these description numbers, not found in the PDF text or surya's reading of the image: 1
 page 249, table: structure doesn't match the PDF layout well (50% consistent)

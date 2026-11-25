@@ -569,6 +569,14 @@ pub fn block_plain_text(html: &str) -> String {
     norm_ws(&d.get_text(Dom::ROOT))
 }
 
+/// The words of a block answer as plain text: like `block_plain_text`, with paragraphs, list
+/// items and cells kept apart (their last and first words must not run together when the
+/// words are looked up in the PDF text).
+pub fn block_words(html: &str) -> String {
+    let d = dom::parse(&clean_block_html(html));
+    norm_ws(&cell_text(&d, Dom::ROOT))
+}
+
 /// ("math", LaTeX) / ("text", Markdown) parts of an equation block, in order.
 pub fn equation_parts(html: &str) -> Vec<(String, String)> {
     let d = dom::parse(&clean_block_html(html));

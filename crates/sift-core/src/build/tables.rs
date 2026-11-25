@@ -1127,6 +1127,72 @@ pub fn empty_share(table: &Table) -> f64 {
     cells.iter().filter(|c| !py::has_ink(&c.text)).count() as f64 / cells.len().max(1) as f64
 }
 
+// ---- text surya read outside a table ----------------------------------------------------
+
+/// A word of running text: the table check's edges plus the sentence marks.
+const TEXT_EDGE: &str = "()[]{},;:\"'“”‘’.?!";
+
+/// A word and its parts around `-` and `/` (`pull-up/pull-down`), each with its edges off.
+fn word_and_parts(raw: &str) -> (String, Vec<String>) {
+    let whole = py::strip_chars(raw, TEXT_EDGE).to_string();
+    let parts = whole
+        .split(['-', '/', '–', '—'])
+        .map(|p| py::strip_chars(p, TEXT_EDGE).to_string())
+        .filter(|p| !p.is_empty())
+        .collect();
+    (whole, parts)
+}
+
+/// The words of a text surya read (the `ocr` route: a text block whose PDF text is missing
+/// or broken, on a page that has a text layer) that the PDF's own text of that page does not
+/// have. Numbers, identifiers and plain words are looked up as the table check looks up a
+/// cell's words (exact, or equal after `norm`), a compound also by its parts. In reading
+/// order, each word once.
+///
+/// It cannot prove surya right (the block is there because the PDF gives no usable text for
+/// it), but a text surya made up shows here: asked to read a blank or half-cut strip, it
+/// answered "Table 2. Comparison of the P. macrophylla population in the three regions of
+/// the study" on a page about strapping pins (docs/LEARNINGS.md, "A page keeps its size").
+pub fn words_not_on_page(text: &str, lines: &[Line]) -> Vec<String> {
+    let mut page: HashSet<String> = HashSet::new();
+    for l in lines {
+        for raw in py::split_ws(&l.text()) {
+            let (whole, parts) = word_and_parts(raw);
+            page.insert(norm(&whole));
+            page.extend(parts.iter().map(|p| norm(p)));
+        }
+    }
+    let known = |t: &str| page.contains(t) || page.contains(&norm(t));
+    let mut out: Vec<String> = Vec::new();
+    for raw in py::split_ws(text) {
+        let (whole, parts) = word_and_parts(raw);
+        if whole.is_empty() || known(&whole) {
+            continue;
+        }
+        for p in if parts.len() > 1 { parts } else { vec![whole] } {
+            if (checkable(&p) || plain_word(&p)) && !known(&p) && !out.contains(&p) {
+                out.push(p);
+            }
+        }
+    }
+    out
+}
+
+/// The report line for `words_not_on_page` (None: every word is on the page).
+pub fn text_report_line(where_: &str, unknown: &[String]) -> Option<String> {
+    if unknown.is_empty() {
+        return None;
+    }
+    let shown = unknown.iter().take(12).map(|t| py::repr_str(t)).collect::<Vec<_>>().join(", ");
+    let more = if unknown.len() > 12 { format!(" and {} more", unknown.len() - 12) } else { String::new() };
+    Some(format!(
+        "{where_}: surya read {} word{} that the PDF text of this page does not have (kept surya's reading; \
+         the PDF gives no usable text there): {shown}{more}",
+        unknown.len(),
+        if unknown.len() == 1 { "" } else { "s" }
+    ))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1140,5 +1206,60 @@ mod tests {
     fn simple_math() {
         assert_eq!(simple_math_html(r"V_{DD}").as_deref(), Some("V<sub>DD</sub>"));
         assert_eq!(simple_math_html(r"\frac{a}{b}"), None);
+    }
+
+    fn text_line(text: &str) -> Line {
+        use crate::pdf::textlayer::Span;
+        let bbox = [0.0, 0.0, 100.0, 10.0];
+        let span = Span {
+            text: text.to_string(),
+            bbox,
+            font: String::new(),
+            weight: 400,
+            bold: false,
+            italic: false,
+            superscript: false,
+            subscript: false,
+            chars: vec![],
+            pos: 0,
+        };
+        Line { spans: vec![span], bbox, vocab: None }
+    }
+
+    /// ESP32-S31.pdf page 36: what surya answered for a blank strip and for a half-cut line,
+    /// against the page's own text.
+    #[test]
+    fn text_surya_made_up_is_not_on_the_page() {
+        let page: Vec<Line> = [
+            "3.2 VDD_SPI Voltage Control",
+            "The default values of the strapping pins, namely the logic levels, are determined by the pins’ internal weak",
+            "pull-up/pull-down resistors at reset if the pins are not connected to any circuit, or connected to an external",
+            "high-impedance circuit.",
+            "Table 3-1. Default Configuration of Strapping Pins",
+            "GPIO60 Weak pull-up 1",
+        ]
+        .iter()
+        .map(|t| text_line(t))
+        .collect();
+        // read right: nothing to report, with or without the sentence marks, compounds by their parts
+        assert!(words_not_on_page("Table 3-1. Default Configuration of Strapping Pins", &page).is_empty());
+        assert!(
+            words_not_on_page("connected to an external high-impedance circuit, pull-down (weak).", &page).is_empty()
+        );
+        // a blank strip
+        assert_eq!(
+            words_not_on_page(
+                "Table 2. Comparison of the P. macrophylla population in the three regions of the study",
+                &page
+            ),
+            ["2", "Comparison", "macrophylla", "population", "three", "regions", "study"]
+        );
+        // a line cut through the middle, and a compound that is on no line
+        assert_eq!(words_not_on_page("3.2 VDD_ST voltage Control", &page), ["VDD_ST", "voltage"]);
+        assert_eq!(words_not_on_page("24. Slip-Dot-Mach-Cont", &page), ["24", "Slip", "Dot", "Mach", "Cont"]);
+        let line = text_report_line("page 36, text", &words_not_on_page("3.2 VDD_ST voltage Control", &page)).unwrap();
+        assert!(line.starts_with("page 36, text: surya read 2 words that the PDF text of this page does not have"));
+        assert!(line.ends_with(": 'VDD_ST', 'voltage'"));
+        assert_eq!(text_report_line("page 36, text", &[]), None);
     }
 }

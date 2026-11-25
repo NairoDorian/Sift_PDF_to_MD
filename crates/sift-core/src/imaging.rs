@@ -32,6 +32,16 @@ impl Rgb {
         Rgb { width: w, height: h, data: out }
     }
 
+    /// Every pixel has the colour of the first one: nothing is drawn here, there is nothing
+    /// to read (a model asked to read such an image answers with text of its own).
+    pub fn is_one_colour(&self) -> bool {
+        let (pixels, _) = self.data.as_chunks::<3>();
+        match pixels.first() {
+            Some(first) => pixels.iter().all(|p| p == first),
+            None => true,
+        }
+    }
+
     /// sha256 of "WxH|" + RGB bytes: the image part of an answer-store key.
     pub fn pixel_hash(&self) -> String {
         let mut h = Sha256::new();

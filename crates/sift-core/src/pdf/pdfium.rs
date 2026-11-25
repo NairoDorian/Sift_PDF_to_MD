@@ -20,7 +20,7 @@ pub type Bitmap = *mut c_void;
 pub type FormHandle = *mut c_void;
 
 #[repr(C)]
-#[derive(Default, Clone, Copy, Debug)]
+#[derive(Default, Clone, Copy, Debug, PartialEq)]
 pub struct RectF {
     pub left: f32,
     pub top: f32,
@@ -81,6 +81,9 @@ api! {
     FPDF_GetPageHeightF: fn(Page) -> f32;
     FPDF_GetPageBoundingBox: fn(Page, *mut RectF) -> c_int;
     FPDFPage_GetRotation: fn(Page) -> c_int;
+    FPDFPage_GetMediaBox: fn(Page, *mut f32, *mut f32, *mut f32, *mut f32) -> c_int;
+    FPDFPage_SetMediaBox: fn(Page, f32, f32, f32, f32);
+    FPDFPage_SetCropBox: fn(Page, f32, f32, f32, f32);
     FPDFPage_Flatten: fn(Page, c_int) -> c_int;
     FPDF_GetFormType: fn(Doc) -> c_int;
     FPDFDOC_InitFormFillEnvironment: fn(Doc, *mut FormFillInfo) -> FormHandle;
@@ -264,22 +267,73 @@ impl Document {
         }
     }
 
+    /// The page's box as pdfium lays the page out: the crop box within the media box, both
+    /// looked up through the page tree (a page inherits the boxes it does not carry itself).
+    unsafe fn page_box(a: &Api, p: Page) -> Option<RectF> {
+        unsafe {
+            let mut r = RectF::default();
+            ((a.FPDF_GetPageBoundingBox)(p, &mut r) != 0).then_some(r)
+        }
+    }
+
+    /// Does the page's own dictionary carry a MediaBox (FPDFPage_GetMediaBox does not look at
+    /// the page tree)?
+    unsafe fn has_own_media_box(a: &Api, p: Page) -> bool {
+        unsafe {
+            let (mut l, mut b, mut r, mut t) = (0f32, 0f32, 0f32, 0f32);
+            (a.FPDFPage_GetMediaBox)(p, &mut l, &mut b, &mut r, &mut t) != 0
+        }
+    }
+
     /// The page, flattened once (pdftext.pdf.utils.flatten, then closed and re-loaded).
+    ///
+    /// The page keeps its box through flattening. pdfium's FPDFPage_Flatten reads MediaBox and
+    /// CropBox from the page's own dictionary only and writes them back: a page that inherits
+    /// its MediaBox from the page tree (every PDF made by LaTeX, e.g. Espressif's datasheets)
+    /// came back as US Letter, 612 x 792, whatever its real size. An A4 page then lost its top
+    /// 50 pt in every render and no longer had the size `page_sizes` holds (read before the
+    /// flatten), so every layout box was scaled 2.7 % off: surya was sent blank strips and
+    /// half-cut tables and answered with text that is not in the PDF (docs/LEARNINGS.md,
+    /// "A page keeps its size"). So: the inherited box is written into the page before the
+    /// flatten, and the box is compared after it; a box that still changed is put back.
     unsafe fn page(&self, a: &Api, idx: usize) -> Result<Page> {
         unsafe {
             let mut p = self.load_page(a, idx)?;
             if self.flatten {
                 let mut fl = self.flattened.lock().unwrap();
                 if !fl[idx] {
+                    let before = Self::page_box(a, p);
+                    if let Some(b) = before
+                        && !Self::has_own_media_box(a, p)
+                    {
+                        (a.FPDFPage_SetMediaBox)(p, b.left, b.bottom, b.right, b.top);
+                    }
                     let rc = (a.FPDFPage_Flatten)(p, FLAT_NORMALDISPLAY);
                     if rc == 0 {
                         // FLATTEN_FAIL: pdftext raises; V0 would have failed the file
                         self.close_page(a, p);
                         bail!("failed to flatten annotations / form fields on page {}", idx + 1);
                     }
-                    fl[idx] = true;
                     self.close_page(a, p);
                     p = self.load_page(a, idx)?;
+                    if let Some(b) = before
+                        && Self::page_box(a, p) != Some(b)
+                    {
+                        (a.FPDFPage_SetMediaBox)(p, b.left, b.bottom, b.right, b.top);
+                        (a.FPDFPage_SetCropBox)(p, b.left, b.bottom, b.right, b.top);
+                        self.close_page(a, p);
+                        p = self.load_page(a, idx)?;
+                        let after = Self::page_box(a, p);
+                        if after != Some(b) {
+                            self.close_page(a, p);
+                            bail!(
+                                "page {}: flattening changed the page box from {b:?} to {after:?}; \
+                                 the text, the renders and the layout would not describe the same page",
+                                idx + 1
+                            );
+                        }
+                    }
+                    fl[idx] = true;
                 }
             }
             Ok(p)
@@ -465,5 +519,113 @@ impl Document {
             (a.FPDFText_ClosePage)(tp);
             Ok(RawPage { bbox, rotation: rot, chars })
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A one-page PDF with the page boxes where the test wants them: `tree` goes into the page
+    /// tree node (inherited by the page), `own` into the page's own dictionary. The page
+    /// carries a link annotation (pdfium's flatten leaves a page without annotations alone) and
+    /// one word drawn at y = 805, in the strip an A4 page has and US Letter (792 high) has not.
+    fn one_page_pdf(tree: &str, own: &str) -> Vec<u8> {
+        let content = "BT /F1 20 Tf 56 805 Td (Top) Tj ET";
+        let objects = [
+            "<< /Type /Catalog /Pages 2 0 R >>".to_string(),
+            format!("<< /Type /Pages /Kids [3 0 R] /Count 1 {tree} >>"),
+            format!(
+                "<< /Type /Page /Parent 2 0 R /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> /Annots [6 0 R] {own} >>"
+            ),
+            format!("<< /Length {} >>\nstream\n{content}\nendstream", content.len()),
+            "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>".to_string(),
+            "<< /Type /Annot /Subtype /Link /Rect [50 800 150 825] /Border [0 0 0] /A << /S /URI /URI (https://example.org/) >> >>"
+                .to_string(),
+        ];
+        let mut out = b"%PDF-1.4\n".to_vec();
+        let mut offsets = Vec::new();
+        for (i, o) in objects.iter().enumerate() {
+            offsets.push(out.len());
+            out.extend(format!("{} 0 obj\n{o}\nendobj\n", i + 1).as_bytes());
+        }
+        let xref = out.len();
+        out.extend(format!("xref\n0 {}\n0000000000 65535 f \n", objects.len() + 1).as_bytes());
+        for off in offsets {
+            out.extend(format!("{off:010} 00000 n \n").as_bytes());
+        }
+        out.extend(
+            format!("trailer\n<< /Size {} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n", objects.len() + 1).as_bytes(),
+        );
+        out
+    }
+
+    fn open(name: &str, tree: &str, own: &str) -> Option<Document> {
+        if lock().is_err() {
+            eprintln!("skipped: pdfium library not found (runtime/pdfium, AGENTS.md)");
+            return None;
+        }
+        let path = std::env::temp_dir().join(format!("sift-test-{name}-{}.pdf", std::process::id()));
+        std::fs::write(&path, one_page_pdf(tree, own)).unwrap();
+        let doc = Document::open(&path, true).unwrap();
+        let _ = std::fs::remove_file(&path); // the bytes are in memory
+        Some(doc)
+    }
+
+    /// The size the PDF declares (read before any flatten), the page the text layer reads and
+    /// the page every render draws must be one and the same page.
+    fn assert_one_page_geometry(doc: &Document, what: &str) -> RawPage {
+        let (w, h) = doc.page_sizes[0];
+        let raw = doc.raw_chars(0, false).unwrap();
+        let (mut bw, mut bh) = (raw.bbox[2] - raw.bbox[0], raw.bbox[3] - raw.bbox[1]);
+        if raw.rotation == 90 || raw.rotation == 270 {
+            std::mem::swap(&mut bw, &mut bh);
+        }
+        assert!(
+            (bw - w).abs() < 0.01 && (bh - h).abs() < 0.01,
+            "{what}: the flattened page is {:?}, the PDF says {w} x {h}",
+            raw.bbox
+        );
+        let img = doc.render_rgb(0, 1.0).unwrap();
+        assert_eq!((img.width, img.height), (w.ceil() as usize, h.ceil() as usize), "{what}: render size");
+        raw
+    }
+
+    /// The Espressif case: the MediaBox (A4) sits on the page tree, the page has none of its
+    /// own. pdfium's flatten turned the page into US Letter (612 x 792): the layout boxes were
+    /// then scaled 2.7 % off, surya was sent blank strips and wrote text that is not in the PDF
+    /// (docs/LEARNINGS.md, "A page keeps its size").
+    #[test]
+    fn inherited_media_box_survives_flatten() {
+        let Some(doc) = open("inherited-media", "/MediaBox [0 0 595.28 841.89]", "") else { return };
+        let (w, h) = doc.page_sizes[0];
+        assert!((w - 595.28).abs() < 0.01 && (h - 841.89).abs() < 0.01, "declared size {w} x {h}");
+        let raw = assert_one_page_geometry(&doc, "inherited MediaBox");
+        // the word above y = 792 is on the page, in the text layer and in the render
+        let inked: Vec<&RawChar> = raw.chars.iter().filter(|c| c.code > 32).collect();
+        assert_eq!(inked.iter().filter_map(|c| char::from_u32(c.code)).collect::<String>(), "Top");
+        assert!(inked.iter().all(|c| c.b >= raw.bbox[1] && c.t <= raw.bbox[3]), "the word is on the page");
+        let img = doc.render_rgb(0, 1.0).unwrap();
+        let top_strip = &img.data[..img.width * 3 * (h - 792.0).floor() as usize];
+        assert!(top_strip.iter().any(|&v| v < 128), "the word above y = 792 is rendered");
+    }
+
+    /// The other ways pdfium's flatten changed a page's box (each measured on pdfium 7891).
+    #[test]
+    fn every_box_arrangement_survives_flatten() {
+        let cases = [
+            ("rotated", "/MediaBox [0 0 595.28 841.89] /Rotate 90", ""),
+            ("both-inherited", "/MediaBox [0 0 595.28 841.89] /CropBox [10 10 500 800]", ""),
+            ("inherited-media-own-crop", "/MediaBox [0 0 595.28 841.89]", "/CropBox [10 10 500 800]"),
+            // came back with the full MediaBox
+            ("own-media-inherited-crop", "/CropBox [10 10 500 800]", "/MediaBox [0 0 595.28 841.89]"),
+            // came back with the CropBox, larger than the page
+            ("crop-larger-than-media", "", "/MediaBox [0 0 595.28 841.89] /CropBox [-20 -20 700 900]"),
+            ("own-media", "", "/MediaBox [0 0 595.28 841.89]"),
+        ];
+        for (name, tree, own) in cases {
+            let Some(doc) = open(name, tree, own) else { return };
+            assert_one_page_geometry(&doc, name);
+        }
     }
 }

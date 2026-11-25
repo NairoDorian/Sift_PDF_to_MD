@@ -114,3 +114,32 @@ better than surya alone. Decision (user): surya 2.5 + Gemma 4 E4B only.
 - Official Windows CUDA builds of llama.cpp moved from CUDA 13.4 to 13.5 around b12174; the
   NVIDIA driver here supports 13.5. GitHub's anonymous API allows 60 requests an hour: the engine
   falls back to the releases feed and the release page.
+
+## A page keeps its size (2026-11-23/25)
+
+- Symptom: in the Markdown of Espressif's datasheets and manuals, text that no PDF holds ("Table 2.
+  Comparison of the P. macrophylla population in the three regions of the study", about 2,000
+  times in 17 files of the SLAB project), scrambled tables, and whole pages lost: on the ESP32-P4
+  hardware design guidelines, pages 11-17, sections 1.3.3 to 1.3.6 were missing.
+- Cause: pdfium's `FPDFPage_Flatten` reads MediaBox and CropBox from the page's own dictionary
+  only, and writes them back. A page that inherits its MediaBox from the page tree (every PDF made
+  by LaTeX, Espressif's included) came back as US Letter, 612 x 792 pt, whatever its real size: an
+  A4 page lost its top 50 pt in every render, and the layout boxes, measured on the size read
+  before the flatten, were 2.7 % off. surya was sent blank strips and half-cut tables; asked to read
+  a blank image, it answers with text of its own.
+- Fix: the inherited box is written into the page before the flatten, compared after it and put
+  back if it moved; a page whose box cannot be kept stops the conversion (the text, the renders and
+  the layout must describe one page). Every box arrangement measured on pdfium 7891 is a unit test.
+  An image of one colour is never sent to a model. The words surya reads in a text block that the
+  page's own text does not have are listed in the report ("surya read N words that the PDF text of
+  this page does not have").
+- Measured: four ranges (ESP32-P4 pages 41-46, its hardware design guidelines 11-17, ESP32-S31
+  36-40, the S31 errata 3-6): 11 made-up captions before, none after; the lost sections back; no
+  word reported as off its page. Golden set: Markdown 14/14 byte-identical (no reference PDF has an
+  inherited box); the two LR2021 reports gain the new check's lines (the "seeed studio" logo, the
+  package drawing's notes, drawn as outlines), so their expected reports were updated; answers and
+  layouts unchanged.
+- To tell an affected PDF: a page with no MediaBox of its own and at least one annotation (a page
+  without annotations is left alone by the flatten) changes size when flattened and reloaded. In
+  the SLAB project, 17 of 108 conversions (all Espressif's, 6,960 of their 7,284 pages); every
+  Markdown made from such a PDF before this fix is to be converted again.

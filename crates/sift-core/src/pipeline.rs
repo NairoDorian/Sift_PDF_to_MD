@@ -250,7 +250,7 @@ pub struct FileResult {
 }
 
 enum SuryaOut {
-    Block { task: SuryaTask, page: usize, c: Completion, max_tokens: u32, png: Prepared },
+    Block { task: SuryaTask, page: usize, c: Completion, max_tokens: u32, png: Prepared, blank: bool },
     FigureOcr { fig: u64, c: Completion },
     FullPage { page: usize, c: Completion, img: Arc<Rgb>, fallback: Vec<(u64, Completion)> },
 }
@@ -582,8 +582,31 @@ impl<'a> FileJob<'a> {
                 "equation" => "equations",
                 _ => "ocr_blocks",
             };
+            let crop = crop_pt(&img, t.bbox, OCR_DPI, 1.5);
+            let blank = crop.is_one_colour();
+            if blank && t.kind == "ocr" {
+                // nothing is drawn there, so there is nothing to read: asked to read a blank
+                // image, surya answers with a text of its own (docs/LEARNINGS.md, "A page
+                // keeps its size"). The block keeps what the PDF gave it, if anything.
+                self.stat("ocr_blank_areas_not_read", 1);
+                self.rt.trace(json!({"event": "surya", "file": self.stem, "route": "ocr", "page": page + 1,
+                    "bbox": t.bbox.map(|v| (v * 10.0).round() / 10.0), "blank_crop": true, "asked": false}));
+                let kept_pdf_text = self
+                    .pages
+                    .last()
+                    .and_then(|p| p.blocks.iter().find(|b| b.id == t.block))
+                    .is_some_and(|b| py::has_ink(&b.text) || !b.items.is_empty());
+                if kept_pdf_text {
+                    self.report.push(format!(
+                        "page {}, text: the PDF text here looks broken and nothing is drawn at its place \
+                         (invisible text); kept the PDF text",
+                        page + 1
+                    ));
+                }
+                continue;
+            }
             self.stat(key, 1);
-            let png = prepare_image(&crop_pt(&img, t.bbox, OCR_DPI, 1.5));
+            let png = prepare_image(&crop);
             let task = t.clone();
             let prompt = prompt.clone();
             self.submit_surya(move |srv, store| {
@@ -593,7 +616,7 @@ impl<'a> FileJob<'a> {
                     c = sclient::generate(srv, store, &png, &prompt, 8192);
                     mt = 8192;
                 }
-                SuryaOut::Block { task, page, c, max_tokens: mt, png }
+                SuryaOut::Block { task, page, c, max_tokens: mt, png, blank }
             });
         }
         Ok(())
@@ -704,6 +727,30 @@ impl<'a> FileJob<'a> {
     }
 
     // ---- applying surya's answers ----------------------------------------------------------
+    /// One trace line per surya answer: the route (table, equation, ocr, figure labels, full
+    /// page), the region and the start of the answer, so a line of the Markdown can be
+    /// followed back to the request that wrote it.
+    fn trace_surya(&self, route: &str, page: usize, bbox: Option<[f64; 4]>, c: &Completion, more: Value) {
+        let mut rec = json!({
+            "event": "surya",
+            "file": self.stem,
+            "route": route,
+            "page": page + 1,
+            "bbox": bbox.map(|b| b.map(|v| (v * 10.0).round() / 10.0)),
+            "tokens": c.tokens,
+            "retries": c.retries,
+            "stored": c.cached,
+            "finish": c.finish_reason,
+            "error": c.error,
+            "chars": py::char_len(&c.text),
+            "text": c.text.chars().take(160).collect::<String>(),
+        });
+        if let (Value::Object(a), Value::Object(b)) = (&mut rec, more) {
+            a.extend(b);
+        }
+        self.rt.trace(rec);
+    }
+
     fn block_mut(&mut self, page: usize, id: u64) -> Option<&mut Block> {
         self.pages.iter_mut().find(|p| p.index == page).and_then(|p| p.blocks.iter_mut().find(|b| b.id == id))
     }
@@ -930,6 +977,14 @@ impl<'a> FileJob<'a> {
                             b.kind = "paragraph".into();
                             b.items.clear();
                             b.text = html::block_to_markdown(&c.text, None);
+                        }
+                        // the PDF gives no usable text for this block, but it does for the rest
+                        // of the page: what surya read is held against the page's own words,
+                        // and the words the page does not have go to the report
+                        let unknown = xcheck::words_not_on_page(&html::block_words(&c.text), &page_lines);
+                        if let Some(line) = xcheck::text_report_line(&format!("page {}, text", page + 1), &unknown) {
+                            stats.push(("ocr_words_not_in_pdf", unknown.len() as i64));
+                            reports.push(line);
                         }
                     }
                 }
@@ -1191,9 +1246,35 @@ impl<'a> FileJob<'a> {
         outs.sort_by_key(|o| o.0);
         for (_, o) in outs {
             match o {
-                SuryaOut::Block { task, page, c, max_tokens, png } => self.apply_block(task, page, c, max_tokens, png),
-                SuryaOut::FigureOcr { fig, c } => self.apply_figure_ocr(fig, c),
-                SuryaOut::FullPage { page, c, img, fallback } => self.apply_full_page(page, c, img, fallback),
+                SuryaOut::Block { task, page, c, max_tokens, png, blank } => {
+                    let own = self
+                        .pages
+                        .iter()
+                        .find(|p| p.index == page)
+                        .and_then(|p| p.blocks.iter().find(|b| b.id == task.block))
+                        .map(|b| b.lines_or_empty().len());
+                    let in_box: usize =
+                        xcheck::lines_from_textlayer(self.page_lines(page), &task.bbox).iter().map(|l| l.0.len()).sum();
+                    self.trace_surya(
+                        task.kind,
+                        page,
+                        Some(task.bbox),
+                        &c,
+                        json!({"pdf_lines": own, "pdf_words_in_box": in_box, "blank_crop": blank}),
+                    );
+                    self.apply_block(task, page, c, max_tokens, png)
+                }
+                SuryaOut::FigureOcr { fig, c } => {
+                    let at = self.figs.iter().find(|f| f.task.block == fig).map(|f| (f.page, f.task.bbox));
+                    if let Some((page, bbox)) = at {
+                        self.trace_surya("figure labels", page, Some(bbox), &c, json!({}));
+                    }
+                    self.apply_figure_ocr(fig, c)
+                }
+                SuryaOut::FullPage { page, c, img, fallback } => {
+                    self.trace_surya("full page", page, None, &c, json!({"fallback_blocks": fallback.len()}));
+                    self.apply_full_page(page, c, img, fallback)
+                }
             }
         }
         self.expand_parts();
