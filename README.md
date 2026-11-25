@@ -23,7 +23,7 @@ Two models do the work, on your GPU, through official llama.cpp builds:
 - **Gemma 4 E4B** describes the images, sets heading levels, joins tables split across pages,
   writes missing formulas and reviews the tables the checks couldn't verify.
 
-> **Status: alpha (1.0.0-alpha.2), Windows only for now.** The core is plain Rust and the window
+> **Status: alpha (1.0.0-alpha.3), Windows only for now.** The core is plain Rust and the window
 > is Tauri, but the engine manager installs Windows CUDA builds of llama.cpp and only Windows is
 > tested. Linux and macOS are planned.
 

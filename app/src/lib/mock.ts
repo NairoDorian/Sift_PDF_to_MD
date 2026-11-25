@@ -84,7 +84,7 @@ export async function mockCall<T>(cmd: string, args: Record<string, unknown>): P
   switch (cmd) {
     case "overview": {
       const o: Overview = {
-        version: "1.0.0-alpha.2",
+        version: "1.0.0-alpha.3",
         settings_file: "C:\\Users\\you\\AppData\\Roaming\\com.nairodorian.sift\\settings.toml",
         portable: false,
         engine_dir: state.engineDir,
@@ -200,7 +200,7 @@ export async function mockCall<T>(cmd: string, args: Record<string, unknown>): P
       state.cancel = true;
       return r(true);
     case "about_info":
-      return r({ version: "1.0.0-alpha.2", settings: "C:\\Users\\you\\AppData\\Roaming\\com.nairodorian.sift\\settings.toml", gpus: [{ name: "NVIDIA GeForce RTX 4070 Laptop GPU", total_mib: 8188, used_mib: 1210, driver: "591.44" }], driver_cuda: "13.5", cpu_threads: 20 });
+      return r({ version: "1.0.0-alpha.3", settings: "C:\\Users\\you\\AppData\\Roaming\\com.nairodorian.sift\\settings.toml", gpus: [{ name: "NVIDIA GeForce RTX 4070 Laptop GPU", total_mib: 8188, used_mib: 1210, driver: "591.44" }], driver_cuda: "13.5", cpu_threads: 20 });
     default:
       return r(null);
   }

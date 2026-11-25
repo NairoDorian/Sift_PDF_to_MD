@@ -3,10 +3,11 @@
 Sift's releases. The release workflow (`.github/workflows/release.yml`) takes a release's notes
 from its section here.
 
-## Unreleased
+## 1.0.0-alpha.3 (2026-11-25)
 
-Fixes from the audit of alpha.2 (docs/AUDIT.md, rounds 1 to 3), and the Engine page's server
-panels.
+Fixes from the audit of alpha.2 (docs/AUDIT.md, rounds 1 to 3), among them one to update for:
+in alpha.2, Cancel could write a degraded Markdown over a good one. Also new: the Engine page's
+server panels, the footer's meters and the strainer-only mark.
 
 **Conversion**
 - Cancel no longer writes anything for the PDF in progress. Before, it carried on with every
@@ -43,6 +44,13 @@ panels.
 - `bun scripts/precommit.ts` runs the routine's checks in one command (`--full` adds the release
   build and the golden test); git runs it on commit once `bun run hooks:install` turned it on.
 - Unused code removed; clippy runs with warnings as errors.
+
+**Dependencies**: sha2 0.11.2; everything else was already at its newest (Rust 1.102 nightly,
+Bun 1.4.6, Solid 2.0.4, Tauri 3 alpha).
+
+**Measured** on the reference machine (RTX 4070 Laptop GPU, cold, LLM pass on, llama.cpp b12728)
+with this installer's build: LR20xx (250 pages) in 367 s and Wio (23 pages) in 87 s; 46.58 and
+122.26 errors per 1,000 PDF words (marker: 56.13 and 136.38).
 
 The conversion is unchanged where nothing was cancelled: the golden test is 14/14 identical.
 

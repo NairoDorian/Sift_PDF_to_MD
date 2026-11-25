@@ -400,10 +400,11 @@ the text layer).
    `nvml.dll` through libloading, one thread that samples once a second only while the window
    shows. Not taken: typed commands with tauri-specta (its newest, 2.0.0-rc.29 of 2026-11-13,
    needs Tauri 2; Sift is on Tauri 3): the command types stay hand-written in `lib/api.ts`.
-3. **Window check**: the first-run flow on a fresh settings file (`SIFT_SETTINGS`), 2026-11-25:
-   Setup 0/4, both folders, llama.cpp installed into an empty folder, models found in a chosen
-   folder, "Everything is in place". Still to do: the models downloaded into an empty folder,
-   then Wio converted, and the same with `sift setup`.
+3. **Window check** (done 2026-11-25): the first-run flow on fresh settings files
+   (`SIFT_SETTINGS`): Setup 0/4, both folders, llama.cpp installed into an empty folder (226 MB),
+   the three models downloaded into an empty folder (6 GB in 147 s with their checks), then Wio
+   converted in that profile (scorecard 122.26, as every live run); `sift setup` on another fresh
+   settings file found both folders filled, checked the ten model files and was ready in 17 s.
 4. **Installer** (done 2026-11-25): NSIS, per user: `sift-app.exe` + `sift.exe` + `pdfium.dll`
    (+ its licenses) + `prompts\` + `catalog\`; first run = the Setup page. v1.0.0-alpha.2 was
    published from the Release workflow the same day; the next release takes the changelog's
