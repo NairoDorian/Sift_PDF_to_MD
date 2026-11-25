@@ -182,6 +182,16 @@ export async function mockCall<T>(cmd: string, args: Record<string, unknown>): P
     }
     case "md_preview":
       return r(SAMPLE_MD);
+    case "server_commands": {
+      const exe = `${state.engineDir}\\${state.engineActive ?? "b12368-cuda-13.5"}\\llama-server.exe`;
+      const host = ["--host", "127.0.0.1", "--port", "0"];
+      return r([
+        { model: "surya", args: [exe, "-m", `${state.modelsDir}\\surya-ocr-2.5-gguf\\surya-2.5-Q8_0.gguf`, "--mmproj", `${state.modelsDir}\\surya-ocr-2.5-gguf\\surya-2.5-mmproj.gguf`, "-ngl", "99", "--parallel", "6", "--ctx-size", "73728", "--alias", "surya", "--jinja", "--special", ...host] },
+        { model: "gemma", args: [exe, "-m", `${state.modelsDir}\\gemma-4-E4B-it-qat-GGUF\\gemma-4-E4B-it-qat-UD-Q4_K_XL.gguf`, "-ngl", "-1", "--flash-attn", "on", "--parallel", "2", ...host] },
+      ]);
+    }
+    case "server_log":
+      return r({ file: `${String(args.output)}\\.sift\\logs\\${String(args.model)}-20261125-174331-59911.log`, lines: ["main: server is listening on http://127.0.0.1:59911", "srv  update_slots: all slots are idle", "slot launch_slot_: id  0 | task 12 | processing task", "slot print_timing: id  0 | prompt eval time = 41.20 ms / 812 tokens"] });
     case "start_convert":
       state.cancel = false;
       void runJob(String((args.req as { input: string }).input));

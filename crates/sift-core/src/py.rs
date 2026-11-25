@@ -156,9 +156,6 @@ pub fn str_isdigit(s: &str) -> bool {
 pub fn str_isdecimal(s: &str) -> bool {
     !s.is_empty() && s.chars().all(is_decimal)
 }
-pub fn str_isspace(s: &str) -> bool {
-    !s.is_empty() && s.chars().all(is_space)
-}
 
 /// Python `str.strip()` (no argument).
 pub fn strip(s: &str) -> &str {
@@ -337,17 +334,6 @@ impl Re {
     }
     pub fn is_match(&self, s: &str) -> bool {
         self.0.is_match(s).unwrap_or(false)
-    }
-    /// `re.match` (anchored at the start).
-    pub fn match_start<'a>(&self, s: &'a str) -> Option<fancy_regex::Captures<'a, str>> {
-        match self.0.captures(s) {
-            Ok(Some(c)) if c.get(0).map(|m| m.start()) == Some(0) => Some(c),
-            Ok(Some(_)) => {
-                // a later match exists; an anchored one may still exist: try with \A
-                None
-            }
-            _ => None,
-        }
     }
     pub fn search<'a>(&self, s: &'a str) -> Option<fancy_regex::Captures<'a, str>> {
         self.0.captures(s).ok().flatten()

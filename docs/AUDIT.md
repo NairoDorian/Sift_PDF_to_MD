@@ -215,6 +215,39 @@ Checked and sound, no change:
 - Folder mode: subfolders mirrored, a broken PDF reported while the others go on, `--force`.
 - The remaining `unwrap`s on input-driven paths all follow a check that makes them safe.
 
-Still to do: Cancel by hand in the window (no model may start after it), the settings file's
-environment overrides and portable mode, the first-run flow on an empty profile, and a pass for
-dead code and comments that still describe V0.
+**Round 3 (2026-11-25): Cancel, the first run, dead code; golden 14/14, 20 unit tests, clippy
+clean (warnings fail).** Environment overrides and portable mode were checked in `6dc8c9a`.
+
+- `batch.rs`, `pipeline.rs:finalize_inner` — after Cancel the PDF in progress carried on with
+  every model request failing (the services shut down on purpose), then wrote its Markdown and
+  report over the earlier good ones and stamped `.sift-options`, so a later folder run took the
+  degraded copy as up to date; its report blamed "surya server unavailable" — bug — none (the
+  command line has no Cancel) — fixed: `Runtime::check_cancel` between layout batches, at the
+  start of finalize and before the write; the file ends as `file_error` with `cancelled: true`,
+  nothing written or stamped. Checked in the window: the earlier `.md`, report and stamp keep
+  their hashes and times
+- the same path — Cancel did not stop CPU work: a long PDF ran its whole layout after it —
+  risk — none — fixed by the same check per layout batch
+- window, Convert — after Cancel the stage list ticked stages whose requests had failed at once
+  ("LLM pass 7/7") and offered "Open the Markdown" — cleanup — none — fixed: counts freeze at
+  Cancel; the callout says what was kept
+- `pipeline::server_command_lines` (new, never released) — built `LlamaServer`s whose blocking
+  HTTP client panics when dropped on Tauri's async runtime: the Engine page's Command panel
+  never loaded — bug — none — fixed: `llm::command_line`, shared with the server, no server
+  object; no other async command builds one
+- `pdf/pdfium.rs` — the not-found error sent users to `sift setup pdfium`, which does not exist,
+  with an empty "Tried:" list — bug — none — fixed: says where pdfium belongs, lists every place
+  looked
+- dead code — `set_library_path`, `Runtime::wait_brain_gate` and its field, `Gate::is_open`,
+  `ModelService::wait_idle`, `AnswerStore::disabled`, `Rgb::from_png`, `Dom::has_attr`,
+  `Re::match_start` (whose comment promised a retry it never made), `str_isspace`,
+  `last_dim_max`, `words_of`, `queue_full_page`'s unused argument — cleanup — none — removed;
+  `LlamaServer::stop`'s comment said "1 s grace" for a 50 ms wait — fixed
+
+Checked and sound, no change:
+- Cancel by hand in the window (UI Automation): before any model, no llama-server in the 25 s
+  after; during surya, servers gone 2.6 to 3.5 s after it, none in the 25 s after.
+- The first run on an empty profile (`SIFT_SETTINGS` on a new file): Setup 0/4, both folders,
+  llama.cpp installed into an empty folder (226 MB, CUDA runtime from the toolkit, verified
+  before switching), models found in the chosen folder, then "Everything is in place".
+- The remaining V0 mentions name where code was ported from (kept on purpose, AGENTS.md).

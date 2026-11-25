@@ -9,7 +9,7 @@
 use std::collections::{HashMap, HashSet};
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
@@ -63,13 +63,15 @@ pub struct Runtime {
     pub log_dir: PathBuf,
     /// surya 2.5: tables, formulas, broken or scanned text, labels inside figures
     pub surya: Option<Arc<ModelService>>,
-    /// opened when surya stopped: Gemma may start (one model at a time on the GPU)
-    pub brain_gate: Option<Arc<Gate>>,
-    /// Gemma 4 E4B: descriptions and the LLM pass
+    /// Gemma 4 E4B: descriptions and the LLM pass; its service waits at the gate surya's opens
+    /// when it stops (one model at a time on the GPU)
     pub brain: Option<Arc<ModelService>>,
     pub detector: Option<Arc<LayoutDetector>>,
     pub engine: String,
     pub need_brain: bool,
+    /// Cancel (the window's button, set by the batch): checked between layout batches and before
+    /// the Markdown is written (`check_cancel`)
+    pub cancel: Option<Arc<AtomicBool>>,
     trace: Mutex<Option<std::fs::File>>,
     pub trace_path: Option<PathBuf>,
     t0: Instant,
@@ -107,9 +109,7 @@ impl Runtime {
             let next = Arc::new(Gate::default());
             let server = match &build {
                 Some(b) => {
-                    let dir = crate::paths::find_model_dir("surya-ocr-2.5-gguf")?;
-                    let file = if cfg.surya.model == "bf16" { "surya-2.5.gguf" } else { "surya-2.5-Q8_0.gguf" };
-                    let (m, mm) = (dir.join(file), dir.join("surya-2.5-mmproj.gguf"));
+                    let (m, mm) = surya_files(&cfg)?;
                     for f in [&m, &mm] {
                         if !f.exists() {
                             return Err(anyhow!(
@@ -155,7 +155,7 @@ impl Runtime {
                 }
                 None => None,
             };
-            Some(ModelService::new("gemma", cfg.gemma.parallel, server, gate.clone(), None))
+            Some(ModelService::new("gemma", cfg.gemma.parallel, server, gate, None))
         } else {
             None
         };
@@ -174,11 +174,11 @@ impl Runtime {
             store,
             log_dir,
             surya,
-            brain_gate: gate,
             brain,
             detector,
             engine,
             need_brain,
+            cancel: None,
             trace: Mutex::new(std::fs::File::create(&trace_path).ok()),
             trace_path: Some(trace_path),
             t0: Instant::now(),
@@ -230,11 +230,19 @@ impl Runtime {
         }
     }
 
-    /// Gemma may start only after surya stopped (one model at a time on 8 GB).
-    pub fn wait_brain_gate(&self) {
-        if let Some(g) = &self.brain_gate {
-            g.wait();
+    pub fn cancelled(&self) -> bool {
+        self.cancel.as_ref().is_some_and(|c| c.load(Ordering::Relaxed))
+    }
+
+    /// After Cancel every model request fails on purpose (the services are shut down), so a file
+    /// carried on past it would be a degraded copy written over a good one, and stamped as up to
+    /// date: the file stops here instead and its earlier output stays as it was. Also stops a
+    /// long layout at the next batch rather than at the last page.
+    pub fn check_cancel(&self) -> Result<()> {
+        if self.cancelled() {
+            return Err(Cancelled.into());
         }
+        Ok(())
     }
 }
 
@@ -246,9 +254,23 @@ pub struct FileResult {
     pub report: Option<PathBuf>,
     pub seconds: f64,
     pub error: Option<String>,
+    /// the error is `Cancelled`: the file stopped on Cancel and nothing was written for it
+    pub cancelled: bool,
     pub profile: Vec<(String, f64)>,
     pub stats: Vec<(String, i64)>,
 }
+
+/// The error a file stops with after Cancel (`Runtime::check_cancel`).
+#[derive(Debug)]
+pub struct Cancelled;
+
+impl std::fmt::Display for Cancelled {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("cancelled: nothing written for this PDF (an earlier Markdown of it is unchanged)")
+    }
+}
+
+impl std::error::Error for Cancelled {}
 
 enum SuryaOut {
     Block { task: SuryaTask, page: usize, c: Completion, max_tokens: u32, png: Prepared, blank: bool },
@@ -295,6 +317,29 @@ fn page_key(line: &str) -> (i64, String) {
         Some(m) => (m[1].parse().unwrap_or(i64::MAX), line.to_string()),
         None => (1_000_000_000, line.to_string()),
     }
+}
+
+/// surya's model and projector files for the configured precision (`[surya] model`): the one
+/// place that decides, for the runtime and for the window's command preview.
+pub fn surya_files(cfg: &Config) -> Result<(PathBuf, PathBuf)> {
+    let dir = crate::paths::find_model_dir("surya-ocr-2.5-gguf")?;
+    let file = if cfg.surya.model == "bf16" { "surya-2.5.gguf" } else { "surya-2.5-Q8_0.gguf" };
+    Ok((dir.join(file), dir.join("surya-2.5-mmproj.gguf")))
+}
+
+/// The two model servers' command lines exactly as Sift would start them now (the active build,
+/// the settings), for the window to show read-only: the same argument builders and the same
+/// `llm::command_line` the runtime uses, and no server object (nothing spawned, no HTTP client).
+/// The port (`0` here) is a free one chosen at start-up.
+pub fn server_command_lines(cfg: &Config) -> Result<Vec<(String, Vec<String>)>> {
+    let build = crate::engine::current_build()?;
+    let (m, mm) = surya_files(cfg)?;
+    let surya = sclient::server_args(&m, &mm, cfg.surya.parallel, cfg.surya.ctx_per_slot);
+    let gemma = brain::server_args(&cfg.gemma);
+    Ok(vec![
+        ("surya".into(), crate::llm::command_line(&build, &surya, 0)),
+        ("gemma".into(), crate::llm::command_line(&build, &gemma, 0)),
+    ])
 }
 
 pub fn parse_pages(spec: &str, n: usize) -> Vec<usize> {
@@ -515,6 +560,7 @@ impl<'a> FileJob<'a> {
         self.doc = Some(doc);
         let mut layout_secs = 0.0;
         for (bi, idx) in selected.chunks(batch).enumerate() {
+            self.rt.check_cancel()?;
             let t0 = Instant::now();
             let layouts: Vec<LayoutResult> = match &replay {
                 Some(pages) => idx
@@ -548,7 +594,7 @@ impl<'a> FileJob<'a> {
                     // a scanned page: surya reads the whole page (box by box as a fallback)
                     self.stat("scanned_pages", 1);
                     self.pages.push(page);
-                    self.queue_full_page(i, &lay);
+                    self.queue_full_page(i);
                 } else {
                     self.pages.push(page);
                     self.queue_blocks(i, &work.surya)?;
@@ -623,7 +669,7 @@ impl<'a> FileJob<'a> {
         Ok(())
     }
 
-    fn queue_full_page(&mut self, page: usize, layout: &LayoutResult) {
+    fn queue_full_page(&mut self, page: usize) {
         if self.rt.surya.is_none() {
             return;
         }
@@ -650,7 +696,6 @@ impl<'a> FileJob<'a> {
                 (b.id, b.kind.clone(), prepare_image(&c), if b.kind != "table" { 2048 } else { 4096 })
             })
             .collect();
-        let _ = layout;
         let img2 = img.clone();
         self.submit_surya(move |srv, store| {
             let png = prepare_image(&img2);
@@ -1214,7 +1259,10 @@ impl<'a> FileJob<'a> {
                 res.images = images;
                 res.report = report;
             }
-            Err(e) => res.error = Some(format!("{e:#}")),
+            Err(e) => {
+                res.cancelled = e.is::<Cancelled>();
+                res.error = Some(format!("{e:#}"));
+            }
         }
         let _ = t0;
         res.seconds = (self.t0.elapsed().as_secs_f64() * 100.0).round() / 100.0;
@@ -1228,6 +1276,7 @@ impl<'a> FileJob<'a> {
     }
 
     fn finalize_inner(&mut self) -> Result<(PathBuf, usize, Option<PathBuf>)> {
+        self.rt.check_cancel()?;
         // 1. surya's answers, in submission order
         let total = self.submitted;
         if total > 0 {
@@ -1589,6 +1638,8 @@ impl<'a> FileJob<'a> {
         blocks = cleanup::join_paragraphs(blocks, &sizes);
         self.stat("paragraphs_joined", (before - blocks.len()) as i64);
         let text = crate::render::markdown::render(&blocks, &self.rt.cfg.convert.tables);
+        // the last moment to stop: every answer before this point may have failed on Cancel
+        self.rt.check_cancel()?;
         std::fs::create_dir_all(&self.out_dir)?;
         let md_path = self.out_dir.join(format!("{}.md", self.stem));
         let tmp = md_path.with_extension("md.tmp");

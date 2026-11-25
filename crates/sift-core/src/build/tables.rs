@@ -881,10 +881,6 @@ fn squash(s: &str) -> String {
     crate::pyre_static!(WS, Re, r"\s+");
     norm(&WS.replace_all(s, ""))
 }
-fn words_of(s: &str) -> HashSet<String> {
-    crate::pyre_static!(W, Re, r"[\p{L}\p{Nl}\p{No}][\p{L}\p{N}_]{2,}");
-    W.find_all(&norm(s)).into_iter().map(String::from).collect()
-}
 fn overlap(a: &Group, b: &Group) -> bool {
     a.2.min(b.2) - a.1.max(b.1) > 0.3 * 1e-6f64.max((a.2 - a.1).min(b.2 - b.1))
 }
@@ -1080,7 +1076,6 @@ pub fn fill_missing(
         (have1, have2) = token_sets(tables);
         placed.push(t);
     }
-    let _ = words_of; // table_words is computed by V0 but never read
     (placed, missing)
 }
 

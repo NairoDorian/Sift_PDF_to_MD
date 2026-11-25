@@ -229,6 +229,19 @@ function Preview(props: { text: string }): JSX.Element {
 
 const GHOST = [42, 88, 74, 92, 60, 85, 30, 78, 66, 90, 55, 81];
 
+/** What Cancel left behind, true for one PDF or a folder: the PDF in progress is never written
+ * (Runtime::check_cancel), files finished before it are complete. */
+function cancelNote(j: Job): string {
+  const written = j.results.filter((r) => !r.error).length;
+  if (j.kind === "pdf") {
+    return written
+      ? "Cancelled after the Markdown was written: it is complete."
+      : "Cancelled: nothing was written, and an earlier Markdown of this PDF is unchanged. The model servers have stopped.";
+  }
+  const kept = written ? `the ${plural(written, "file")} converted before it ${written === 1 ? "is" : "are"} complete; nothing else was written` : "nothing was written";
+  return `Cancelled: ${kept}. The model servers have stopped.`;
+}
+
 function MarkdownCard(): JSX.Element {
   const j = () => job();
   const single = () => {
@@ -301,7 +314,7 @@ function MarkdownCard(): JSX.Element {
             <Show when={cur().state === "failed" || cur().state === "cancelled"}>
               <div style={{ "margin-top": "12px" }}>
                 <Callout kind={cur().state === "failed" ? "error" : "warn"}>
-                  {cur().state === "cancelled" ? "Cancelled. Nothing more runs; the model servers have stopped." : cur().error ?? "The conversion stopped."}
+                  {cur().state === "cancelled" ? cancelNote(cur()) : cur().error ?? "The conversion stopped."}
                 </Callout>
               </div>
             </Show>
@@ -356,16 +369,17 @@ function MarkdownCard(): JSX.Element {
               )}
             </Show>
 
-            <Show when={!single() && cur().results.length > 0}>
+            {/* one PDF's error or cancellation is the callout above; a folder lists its files */}
+            <Show when={cur().kind === "folder" && cur().results.length > 0}>
               <div class="file-list">
                 <For each={cur().results}>
                   {(r) => (
                     <div class="item">
-                      <Icon name={r.error ? "alert" : "markdown"} size={14} class={r.error ? "error-text" : "accent-text"} />
+                      <Icon name={r.error ? "alert" : "markdown"} size={14} class={r.cancelled ? "warn-text" : r.error ? "error-text" : "accent-text"} />
                       <span class="ellipsis" style={{ flex: "1" }} title={r.error ?? r.md ?? r.file}>
                         {r.md ? fileName(r.md) : fileName(r.file)}
                         <Show when={r.error}>
-                          <span class="error-text"> · {r.error}</span>
+                          <span class={r.cancelled ? "warn-text" : "error-text"}> · {r.error}</span>
                         </Show>
                       </span>
                       <Show when={r.md}>

@@ -66,22 +66,6 @@ impl Rgb {
         }
         buf
     }
-
-    pub fn from_png(bytes: &[u8]) -> anyhow::Result<Rgb> {
-        let dec = png::Decoder::new(std::io::Cursor::new(bytes));
-        let mut r = dec.read_info()?;
-        let mut buf = vec![0; r.output_buffer_size().unwrap_or(0)];
-        let info = r.next_frame(&mut buf)?;
-        let (w, h) = (info.width as usize, info.height as usize);
-        let data = match info.color_type {
-            png::ColorType::Rgb => buf[..w * h * 3].to_vec(),
-            png::ColorType::Rgba => buf[..w * h * 4].chunks(4).flat_map(|p| [p[0], p[1], p[2]]).collect(),
-            png::ColorType::Grayscale => buf[..w * h].iter().flat_map(|&g| [g, g, g]).collect(),
-            png::ColorType::GrayscaleAlpha => buf[..w * h * 2].chunks(2).flat_map(|p| [p[0], p[0], p[0]]).collect(),
-            png::ColorType::Indexed => anyhow::bail!("indexed PNG not supported"),
-        };
-        Ok(Rgb { width: w, height: h, data })
-    }
 }
 
 pub fn hex(b: &[u8]) -> String {

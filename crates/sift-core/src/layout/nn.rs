@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use anyhow::{Context, Result, anyhow};
-use candle_core::{D, DType, Device, Tensor};
+use candle_core::{DType, Device, Tensor};
 
 pub struct Weights {
     pub map: HashMap<String, Tensor>,
@@ -156,8 +156,4 @@ pub fn attention(q: &Tensor, k: &Tensor, v: &Tensor, heads: usize, mask: Option<
 
 pub fn cpu() -> Device {
     Device::Cpu
-}
-
-pub fn last_dim_max(x: &Tensor) -> Result<Tensor> {
-    Ok(x.max(D::Minus1)?)
 }

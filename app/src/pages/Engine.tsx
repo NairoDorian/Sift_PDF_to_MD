@@ -1,5 +1,5 @@
 import type { JSX } from "@solidjs/web";
-import { For, Show } from "solid-js";
+import { createEffect, createSignal, For, Show } from "solid-js";
 import { Icon } from "../components/Icon";
 import { Callout, ConfirmButton, FolderSetting, Group, PageHead, Progress, ServerDot, Setting, Toggle } from "../components/ui";
 import { mb } from "../lib/format";
@@ -13,9 +13,14 @@ import {
   engineBusy,
   engineLog,
   installEngine,
+  lastOutput,
+  openPath,
   saveSetting,
+  serverLines,
+  serverLog,
   servers,
   settings,
+  type ServerCommand,
 } from "../lib/store";
 
 /* The llama.cpp engine (ZER0's LlamaSettings page): official ggml-org builds only. GitHub's
@@ -26,6 +31,103 @@ const SERVER_INFO: [string, string][] = [
   ["surya", "surya 2.5: starts with the first table, formula or scanned page"],
   ["gemma", "Gemma 4 E4B: starts with the first description or LLM-pass request"],
 ];
+
+/** One model server: its state, and on demand the command Sift starts it with (read-only) and the
+ * end of its log (refreshed every 2 s while it runs and the panel is open). */
+function ServerRow(props: { id: string; desc: string; command?: ServerCommand; commandError: string }): JSX.Element {
+  const [open, setOpen] = createSignal<"" | "command" | "log">("");
+  const [log, setLog] = createSignal<{ file: string | null; lines: string[] } | null>(null);
+  const [copied, setCopied] = createSignal(false);
+  const state = () => servers()[props.id];
+  const live = () => state() === "starting" || state() === "ready";
+  const load = async () => {
+    try {
+      setLog(await serverLog(props.id));
+    } catch {
+      setLog({ file: null, lines: [] });
+    }
+  };
+  createEffect(
+    () => [open(), live()] as const,
+    ([panel, running]) => {
+      if (panel !== "log") return;
+      void load();
+      if (!running) return;
+      const t = setInterval(() => void load(), 2000);
+      return () => clearInterval(t);
+    },
+  );
+  const commandText = () =>
+    (props.command?.args ?? [])
+      .map((a, i, all) => (i === all.length - 1 && a === "0" ? "<free port>" : /\s/.test(a) ? `"${a}"` : a))
+      .join(" ");
+  const copy = async () => {
+    await navigator.clipboard.writeText(commandText());
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+  const toggle = (p: "command" | "log") => setOpen(open() === p ? "" : p);
+  // a log reads from the bottom: keep its newest lines in view after each refresh
+  let logBox: HTMLPreElement | undefined;
+  createEffect(
+    () => log(),
+    () => {
+      if (logBox) logBox.scrollTop = logBox.scrollHeight;
+    },
+  );
+  return (
+    <div>
+      <Setting
+        title={
+          <span class="row" style={{ gap: "8px" }}>
+            <ServerDot state={state()} />
+            {props.id}
+          </span>
+        }
+        desc={props.desc}
+      >
+        <button class="btn sm ghost" aria-pressed={open() === "command" ? "true" : "false"} onClick={() => toggle("command")}>
+          Command
+        </button>
+        <button class="btn sm ghost" aria-pressed={open() === "log" ? "true" : "false"} onClick={() => toggle("log")}>
+          Log
+        </button>
+        <span class="badge">{state() ?? "stopped"}</span>
+      </Setting>
+      <Show when={open() === "command"}>
+        <div class="server-panel">
+          <Show when={props.command} fallback={<p class="small muted">Not available: {props.commandError || "the engine or the models are not installed"}.</p>}>
+            <pre class="console">{commandText()}</pre>
+            <div class="row">
+              <span class="small muted">How Sift starts it, with the settings and the build in use; read-only.</span>
+              <span class="spacer" />
+              <button class="btn sm" onClick={() => void copy()}>
+                <Icon name={copied() ? "check" : "copy"} size={13} /> {copied() ? "Copied" : "Copy"}
+              </button>
+            </div>
+          </Show>
+        </div>
+      </Show>
+      <Show when={open() === "log"}>
+        <div class="server-panel">
+          <pre class="console" ref={(el) => (logBox = el)}>
+            {log()?.lines.length ? log()!.lines.join("\n") : lastOutput() ? "No log for this server in the latest run." : "No server has run in this session yet."}
+          </pre>
+          <Show when={log()?.file}>
+            <div class="row">
+              <span class="path ellipsis" style={{ flex: "1" }} title={log()?.file ?? ""}>
+                {log()?.file}
+              </span>
+              <button class="btn sm ghost icon" title="Open the log" onClick={() => openPath(log()?.file ?? "")}>
+                <Icon name="external" size={13} />
+              </button>
+            </div>
+          </Show>
+        </div>
+      </Show>
+    </div>
+  );
+}
 
 export default function Engine(): JSX.Element {
   const e = () => engine();
@@ -146,11 +248,7 @@ export default function Engine(): JSX.Element {
 
         <Group title="Model servers">
           <For each={SERVER_INFO}>
-            {([id, desc]) => (
-              <Setting title={<span class="row" style={{ gap: "8px" }}><ServerDot state={servers()[id]} />{id}</span>} desc={desc}>
-                <span class="badge">{servers()[id] ?? "stopped"}</span>
-              </Setting>
-            )}
+            {([id, desc]) => <ServerRow id={id} desc={desc} command={serverLines().list.find((c) => c.model === id)} commandError={serverLines().error} />}
           </For>
           <div class="setting compact">
             <span class="small muted">A server stops as soon as it has no work, and every server stops with Sift.</span>

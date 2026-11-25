@@ -447,6 +447,9 @@ select.input { padding-right: 4px; }
 
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
 .stats.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.server-panel { display: flex; flex-direction: column; gap: 8px; padding: 0 14px 12px; }
+.server-panel .console { margin: 0; max-height: 220px; min-height: 0; }
+.btn.ghost[aria-pressed="true"] { color: var(--accent); background: var(--accent-tint); }
 .stats > div { padding: 11px 14px; border-right: 1px solid var(--hairline); min-width: 0; }
 .stats > div:last-child { border-right: 0; }
 .box > .stats { border-top: 0; }

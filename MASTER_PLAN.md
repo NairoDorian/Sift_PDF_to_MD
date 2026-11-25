@@ -375,8 +375,9 @@ the text layer).
 
 ## 11. What's next
 
-0. **Audit and code review** of the first public commit (`docs/AUDIT.md`): findings fixed one by
-   one, the golden test after each, `docs/AUDIT.md` updated with what was found.
+0. **Audit and code review** (`docs/AUDIT.md`): rounds 1 to 3 done on 2026-11-25 (clippy, untrusted
+   input, Cancel, the first run, dead code), each with the golden test; the fixes are in the
+   changelog's Unreleased section. Next round when the code changes enough to need one.
 1. **Live check** on this machine: cold runs of LR20xx and Wio with the new folders (engine and
    models in `engine\`, `models\` at the repository root). Exit: LR20xx at most 355 s, Wio at most 86 s; errors per
    1,000 PDF words at most 46.8 and 121.5; report reviewed; logs read. Engine updated to
@@ -387,15 +388,19 @@ the text layer).
    LR20xx.
    The window was redesigned and walked page by page on 2026-11-25 (dev preview and the real
    app); a live conversion from the window is part of this check.
-2. **Window, ZER0 parity**: the live log ring of each llama-server on the Engine page (ZER0
-   `llama_server.rs`); a read-only preview of each server's command line; footer meters (CPU, RAM,
-   GPU, VRAM) if they earn their dependency (`sysinfo`, `nvml-wrapper`); typed commands with
-   tauri-specta; ZER0's pre-commit gate (oxlint, typecheck, tests, format).
-3. **Window check**: a run of the first-run flow on a fresh user profile with empty folders
-   (Start -> install -> download -> convert Wio), and the same with `sift setup`.
+2. **Window, ZER0 parity**: done 2026-11-25: each llama-server's log, followed live, and its
+   command line (read-only, Copy) on the Engine page; the pre-commit gate (`scripts/precommit.ts`,
+   `.githooks/`: format, clippy with warnings as errors, unit tests, typecheck, production build,
+   workflow files; `--full` adds the release build and the golden test). Still open: footer
+   meters (CPU, RAM, GPU, VRAM) without a new dependency; typed commands with tauri-specta.
+3. **Window check**: the first-run flow on a fresh settings file (`SIFT_SETTINGS`), 2026-11-25:
+   Setup 0/4, both folders, llama.cpp installed into an empty folder, models found in a chosen
+   folder, "Everything is in place". Still to do: the models downloaded into an empty folder,
+   then Wio converted, and the same with `sift setup`.
 4. **Installer** (done 2026-11-25): NSIS, per user: `sift-app.exe` + `sift.exe` + `pdfium.dll`
-   (+ its licenses) + `prompts\` + `catalog\`; first run = the Setup page. Next: publish the first
-   draft release from the Release workflow after a run on a clean machine.
+   (+ its licenses) + `prompts\` + `catalog\`; first run = the Setup page. v1.0.0-alpha.2 was
+   published from the Release workflow the same day; the next release takes the changelog's
+   Unreleased section.
 5. Then the backlog (13).
 
 ---

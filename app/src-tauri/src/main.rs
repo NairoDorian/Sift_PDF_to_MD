@@ -245,6 +245,47 @@ async fn set_folder(kind: String, path: String, move_files: bool) -> Result<Valu
     Ok(json!({"moved": moved, "old": old}))
 }
 
+/// The model servers' command lines as Sift would start them now (Engine page, read-only).
+#[tauri::command]
+async fn server_commands() -> Result<Value, String> {
+    let cfg = Config::load(None).map_err(err)?;
+    let lines = sift_core::pipeline::server_command_lines(&cfg).map_err(err)?;
+    Ok(json!(lines.into_iter().map(|(model, args)| json!({"model": model, "args": args})).collect::<Vec<_>>()))
+}
+
+/// The end of a model server's newest log in a run's output folder (`<output>\.sift\logs`): the
+/// Engine page shows it while a server runs, and the last run's afterwards.
+#[tauri::command]
+async fn server_log(model: String, output: String) -> Result<Value, String> {
+    use std::io::{Read, Seek, SeekFrom};
+    if model != "surya" && model != "gemma" {
+        return Err(format!("no model server named {model}"));
+    }
+    let dir = Path::new(&output).join(".sift").join("logs");
+    let newest = std::fs::read_dir(&dir)
+        .map_err(|e| format!("{}: {e}", dir.display()))?
+        .flatten()
+        .filter(|e| {
+            let n = e.file_name().to_string_lossy().to_string();
+            n.starts_with(&format!("{model}-")) && n.ends_with(".log")
+        })
+        .max_by_key(|e| e.metadata().and_then(|m| m.modified()).ok());
+    let Some(entry) = newest else { return Ok(json!({"file": null, "lines": []})) };
+    let mut f = std::fs::File::open(entry.path()).map_err(|e| e.to_string())?;
+    let len = f.metadata().map(|m| m.len()).unwrap_or(0);
+    // the last 48 KB is plenty for the lines shown, whatever the log's size
+    f.seek(SeekFrom::Start(len.saturating_sub(48_000))).map_err(|e| e.to_string())?;
+    let mut buf = Vec::new();
+    f.read_to_end(&mut buf).map_err(|e| e.to_string())?;
+    let text = String::from_utf8_lossy(&buf);
+    let mut lines: Vec<&str> = text.lines().collect();
+    if len > 48_000 && !lines.is_empty() {
+        lines.remove(0); // a partial first line
+    }
+    let tail: Vec<&str> = lines.iter().rev().take(80).rev().copied().collect();
+    Ok(json!({"file": entry.path().display().to_string(), "lines": tail}))
+}
+
 /// Open a folder in Explorer, or a file with its default app: only what Sift writes (the
 /// converted `.md`, the `.txt` report). Explorer *runs* a program it is handed, so nothing else
 /// goes through here.
@@ -528,6 +569,8 @@ fn main() {
             pick_pdf,
             input_info,
             md_preview,
+            server_commands,
+            server_log,
             set_folder,
             open_path,
             reveal_path,

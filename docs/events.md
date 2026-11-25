@@ -21,7 +21,7 @@ Every event has:
 | `server` | `model` (`surya` \| `gemma`), `state` (`starting` \| `ready` \| `stopped`), `seconds` (load time, on `ready`) | Model server lifecycle: a server starts with its first job and stops when idle |
 | `warning` | `message` | Something worth showing (e.g. `cancelled`) |
 | `file_done` | `md` (path), `images` (int), `report` (path or null), `seconds`, `stats` (counts: pages, tables, figures, described, corrected table values, ...) | The `.md` is written |
-| `file_error` | `error` (one line) | The file failed; the job goes on |
+| `file_error` | `error` (one line), `cancelled` (true when the file stopped on Cancel: nothing was written for it, an earlier Markdown of it is unchanged) | The file failed; the job goes on (after Cancel, no other file starts) |
 | `job_done` | `files`, `ok`, `failed`, `skipped`, `seconds` | End of the command |
 | `log` | `message` | Free text (profile lines) |
 

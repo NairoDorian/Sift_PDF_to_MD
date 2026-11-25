@@ -55,6 +55,7 @@ export async function refresh(): Promise<void> {
   } catch (err) {
     log("error", "app", `refresh: ${err}`);
   }
+  await loadServerLines();
 }
 
 /** Save one key of the settings file (the window and the command line share it). */
@@ -93,6 +94,26 @@ export function log(level: Level, kind: string, text: string) {
 // ---- model servers (the footer, the Engine page) ----------------------------------------------
 
 export const [servers, setServers] = createSignal<Record<string, string>>({});
+/** The output folder of this session's latest job: where its servers' logs are (`.sift\logs`). */
+export const [lastOutput, setLastOutput] = createSignal<string | null>(null);
+
+export type ServerCommand = { model: string; args: string[] };
+/** How Sift would start each model server now (read-only; nothing is started), or why it can't
+ * say (no engine, no models). Refreshed with the rest by `refresh()`: a local call, no network. */
+export const [serverLines, setServerLines] = createSignal<{ list: ServerCommand[]; error: string }>({ list: [], error: "" });
+async function loadServerLines() {
+  try {
+    setServerLines({ list: await call<ServerCommand[]>("server_commands"), error: "" });
+  } catch (err) {
+    setServerLines({ list: [], error: String(err) });
+  }
+}
+/** The end of a server's newest log in the latest job's output folder. */
+export async function serverLog(model: string): Promise<{ file: string | null; lines: string[] } | null> {
+  const out = lastOutput();
+  if (!out) return null;
+  return call("server_log", { model, output: out });
+}
 
 // ---- the conversion --------------------------------------------------------------------------
 
@@ -123,6 +144,8 @@ export type FileResult = {
   seconds: number;
   stats: Record<string, number>;
   error?: string;
+  /** stopped on Cancel: nothing was written for it */
+  cancelled?: boolean;
 };
 export type StageCount = { done: number; total: number };
 export type Job = {
@@ -258,6 +281,7 @@ function onSiftEvent(d: SiftEvent) {
   switch (d.type) {
     case "job_start":
       patchJob((j) => ({ ...j, files: d.files ?? j.files, skipped: d.skipped ?? 0 }));
+      if (d.output) setLastOutput(d.output);
       log("info", "job", `${d.files ?? 0} PDF(s) to convert${d.skipped ? `, ${d.skipped} up to date` : ""} -> ${d.output ?? ""}${d.engine ? ` (llama.cpp ${d.engine})` : ""}`);
       break;
     case "file_start":
@@ -266,6 +290,8 @@ function onSiftEvent(d: SiftEvent) {
       break;
     case "stage":
       patchJob((j) => {
+        // after Cancel the remaining requests fail at once: the counts stay where the work was
+        if (j.cancelling) return j;
         const stages = { ...j.stages, [d.name ?? "?"]: { done: d.done ?? 0, total: d.total ?? 0 } };
         const next = { ...j, stages, stage: d.name ?? j.stage };
         const p = (j.fileIndex + fileFraction(next)) / Math.max(1, j.files);
@@ -284,10 +310,13 @@ function onSiftEvent(d: SiftEvent) {
       if (r.md) void loadPreview(r.md);
       break;
     }
-    case "file_error":
-      patchJob((j) => ({ ...j, results: [...j.results, { file: d.file ?? "", md: null, report: null, images: 0, seconds: 0, stats: {}, error: d.error ?? "failed" }] }));
-      log("error", "failed", `${fileName(d.file ?? "")}: ${d.error ?? ""}`);
+    case "file_error": {
+      const error = d.cancelled ? "Cancelled: not written" : (d.error ?? "failed");
+      patchJob((j) => ({ ...j, results: [...j.results, { file: d.file ?? "", md: null, report: null, images: 0, seconds: 0, stats: {}, error, cancelled: !!d.cancelled }] }));
+      if (d.cancelled) log("warn", "cancelled", `${fileName(d.file ?? "")}: nothing written; an earlier Markdown of it is unchanged`);
+      else log("error", "failed", `${fileName(d.file ?? "")}: ${d.error ?? ""}`);
       break;
+    }
     case "job_done":
       log("info", "job", `finished: ${d.ok ?? 0} converted, ${d.failed ?? 0} failed, ${d.skipped ?? 0} up to date (${(d.seconds ?? 0).toFixed(1)} s)`);
       break;

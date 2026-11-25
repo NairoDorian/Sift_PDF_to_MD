@@ -1,0 +1,4 @@
+#!/bin/sh
+# Sift's pre-commit gate (opt in per clone: git config core.hooksPath .githooks).
+# The quick checks only; the golden test runs with `bun scripts/precommit.ts --full`.
+exec bun scripts/precommit.ts

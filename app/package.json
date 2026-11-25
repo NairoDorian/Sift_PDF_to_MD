@@ -8,7 +8,11 @@
     "build": "tsc -b && vite build",
     "typecheck": "tsc -b",
     "tauri": "tauri",
-    "update": "bun ../scripts/update-deps.ts"
+    "update": "bun ../scripts/update-deps.ts",
+    "precommit": "bun ../scripts/precommit.ts",
+    "precommit:full": "bun ../scripts/precommit.ts --full",
+    "hooks:install": "git config core.hooksPath .githooks",
+    "hooks:uninstall": "git config --unset core.hooksPath"
   },
   "dependencies": {
     "@solidjs/web": "2.0.4",

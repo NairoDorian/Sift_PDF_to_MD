@@ -42,10 +42,6 @@ impl AnswerStore {
         AnswerStore { replay, dir, replay_only, stats: Stats::default(), misses: Default::default() }
     }
 
-    pub fn disabled() -> AnswerStore {
-        AnswerStore::new(None, vec![], false)
-    }
-
     fn path(root: &Path, key: &str) -> PathBuf {
         root.join(&key[..2]).join(format!("{key}.json"))
     }

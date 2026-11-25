@@ -117,15 +117,10 @@ unsafe impl Sync for Api {}
 
 static API: OnceLock<std::result::Result<Api, String>> = OnceLock::new();
 static LOCK: Mutex<()> = Mutex::new(());
-static LIB_PATH: OnceLock<PathBuf> = OnceLock::new();
 
-/// Where to load pdfium from (call before the first document). Default: `SIFT_PDFIUM`,
-/// else `pdfium.dll` next to the executable, else the runtime folder of the workspace.
-pub fn set_library_path(p: PathBuf) {
-    let _ = LIB_PATH.set(p);
-}
-
-pub fn default_library_candidates() -> Vec<PathBuf> {
+/// Where pdfium is looked for, in order: `SIFT_PDFIUM`, next to the executable (the installer
+/// puts it there), then `runtime\pdfium\` up to five folders above it (development builds).
+fn library_candidates() -> Vec<PathBuf> {
     let name = if cfg!(windows) {
         "pdfium.dll"
     } else if cfg!(target_os = "macos") {
@@ -134,9 +129,6 @@ pub fn default_library_candidates() -> Vec<PathBuf> {
         "libpdfium.so"
     };
     let mut v = Vec::new();
-    if let Some(p) = LIB_PATH.get() {
-        v.push(p.clone());
-    }
     if let Ok(p) = std::env::var("SIFT_PDFIUM") {
         v.push(PathBuf::from(p));
     }
@@ -154,12 +146,13 @@ pub fn default_library_candidates() -> Vec<PathBuf> {
 
 fn api() -> Result<&'static Api> {
     let r = API.get_or_init(|| {
+        let candidates = library_candidates();
         let mut errors = Vec::new();
-        for p in default_library_candidates() {
+        for p in &candidates {
             if !p.exists() {
                 continue;
             }
-            match unsafe { Library::new(&p) } {
+            match unsafe { Library::new(p) } {
                 Ok(lib) => match unsafe { Api::load(lib) } {
                     Ok(api) => {
                         unsafe { (api.FPDF_InitLibrary)() };
@@ -171,7 +164,17 @@ fn api() -> Result<&'static Api> {
                 Err(e) => errors.push(format!("{}: {e}", p.display())),
             }
         }
-        Err(format!("pdfium library not found (run `sift setup pdfium`). Tried: {}", errors.join("; ")))
+        // (there is no command that installs pdfium: the installer ships it next to the program)
+        Err(if errors.is_empty() {
+            let looked: Vec<String> = candidates.iter().map(|p| p.display().to_string()).collect();
+            format!(
+                "pdfium was not found. It belongs next to the program (the installer puts it there), or set \
+                 SIFT_PDFIUM to its path. Looked for: {}",
+                looked.join("; ")
+            )
+        } else {
+            format!("pdfium could not be loaded: {}", errors.join("; "))
+        })
     });
     r.as_ref().map_err(|e| anyhow!(e.clone()))
 }

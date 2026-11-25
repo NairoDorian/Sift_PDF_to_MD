@@ -49,12 +49,20 @@ The routine is what you run before a commit; it is not optional and has no short
 bun scripts/update-deps.ts      # 1. every dependency to its newest version (prereleases incl., Tauri 3 and
                                 #    Solid 2 included), then cargo update -> check -> unit tests -> bun install ->
                                 #    tsc -> vite build -> release build -> golden test (--quick skips the last two)
-cargo fmt --check && cargo clippy --workspace --all-targets   # 2. format and lint
-cargo test -p sift-core --lib   # 3. unit tests
-cargo build --release -p sift-cli && bash bench/golden/run.sh # 4. the golden test (14/14 identical)
+bun scripts/precommit.ts --full # 2-4 in one command, stopping at the first failure: cargo fmt --check, clippy
+                                #    (warnings fail), unit tests, tsc, vite build, the workflow files parse, then
+                                #    the release build and the golden test (14/14 identical); without --full, the
+                                #    quick part only (about 40 s)
 cd app && bun run tauri dev     # 5. after a window change: open it and walk the pages you touched
-git commit                      # 6. only when the user asks
+git commit                      # 6. only when the user asks; the hook runs the quick gate on the working tree
 ```
+
+**The pre-commit gate** (ZER0): `scripts/precommit.ts`, also `bun run precommit` /
+`precommit:full` from `app/`. Git runs its quick part on every commit once the hook is on, per
+clone: `bun run hooks:install` from `app/` (`git config core.hooksPath .githooks`; it is on in
+the maintainer's clone, as in ZER0's); `hooks:uninstall` turns it off. The golden test stays out
+of the hook (minutes, not seconds): run `--full` before a commit that touches anything between
+the text layer and the Markdown, and before a release.
 
 **Step 1 always goes to prerelease, for every dependency.** For part of the stack the newest is
 only ever a prerelease: Tauri 3 only as alphas, TypeScript's newest as dev builds. A stable-only

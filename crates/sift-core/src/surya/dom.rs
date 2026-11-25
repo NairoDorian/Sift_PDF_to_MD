@@ -60,9 +60,6 @@ impl Dom {
     pub fn attr(&self, id: NodeId, k: &str) -> Option<&str> {
         self.nodes[id].attrs.iter().rev().find(|(a, _)| a == k).and_then(|(_, v)| v.as_deref())
     }
-    pub fn has_attr(&self, id: NodeId, k: &str) -> bool {
-        self.nodes[id].attrs.iter().any(|(a, _)| a == k)
-    }
     pub fn set_attr(&mut self, id: NodeId, k: &str, v: &str) {
         let attrs = &mut self.nodes[id].attrs;
         if let Some(p) = attrs.iter_mut().find(|(a, _)| a == k) {

@@ -60,6 +60,21 @@ fn free_port() -> Result<u16> {
     Ok(TcpListener::bind("127.0.0.1:0")?.local_addr()?.port())
 }
 
+/// llama-server's path in a build folder.
+pub fn server_exe(build_dir: &Path) -> PathBuf {
+    build_dir.join(if cfg!(windows) { "llama-server.exe" } else { "llama-server" })
+}
+
+/// The command line a server starts with: the build's llama-server, the model's arguments, the
+/// local address. A free function so the window can show it without a `LlamaServer`, whose HTTP
+/// client must never be created or dropped on Tauri's async runtime (tokio panics there).
+pub fn command_line(build_dir: &Path, args: &[String], port: u16) -> Vec<String> {
+    let mut v = vec![server_exe(build_dir).display().to_string()];
+    v.extend(args.iter().cloned());
+    v.extend(["--host".into(), "127.0.0.1".into(), "--port".into(), port.to_string()]);
+    v
+}
+
 impl LlamaServer {
     pub fn new(name: &str, args: Vec<String>, build_dir: &Path, log_dir: &Path, on_state: StateFn) -> LlamaServer {
         LlamaServer {
@@ -77,14 +92,11 @@ impl LlamaServer {
     }
 
     pub fn exe(&self) -> PathBuf {
-        self.build_dir.join(if cfg!(windows) { "llama-server.exe" } else { "llama-server" })
+        server_exe(&self.build_dir)
     }
 
     pub fn command_line(&self, port: u16) -> Vec<String> {
-        let mut v = vec![self.exe().display().to_string()];
-        v.extend(self.args.iter().cloned());
-        v.extend(["--host".into(), "127.0.0.1".into(), "--port".into(), port.to_string()]);
-        v
+        command_line(&self.build_dir, &self.args, port)
     }
 
     /// Spawn without waiting for the model to load (once).
@@ -195,7 +207,8 @@ impl LlamaServer {
         bail!("{}: not ready after {:?}", self.name, self.startup_timeout)
     }
 
-    /// Stop: the server is idle when Sift stops it; terminate after a 1 s grace (V0 LEARNINGS).
+    /// Stop now. Callers stop a server only after its last answer (Cancel: after the queue is
+    /// dropped), so nothing is waited for: a 50 ms look for an exit, then kill.
     pub fn stop(&self) {
         let child = {
             let mut g = self.inner.lock().unwrap();
@@ -301,9 +314,6 @@ impl Gate {
         while !*g {
             g = self.cv.wait(g).unwrap();
         }
-    }
-    pub fn is_open(&self) -> bool {
-        *self.open.lock().unwrap()
     }
 }
 
@@ -414,14 +424,6 @@ impl ModelService {
         self.finished.store(true, Ordering::Relaxed);
         if *self.pending.0.lock().unwrap() == 0 {
             self.stop();
-        }
-    }
-
-    /// Block until every queued job is done.
-    pub fn wait_idle(&self) {
-        let mut p = self.pending.0.lock().unwrap();
-        while *p > 0 {
-            p = self.pending.1.wait(p).unwrap();
         }
     }
 

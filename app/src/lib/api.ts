@@ -48,6 +48,8 @@ export type SiftEvent = {
   model?: string;
   state?: string;
   error?: string;
+  /** file_error: the file stopped on Cancel, nothing was written for it */
+  cancelled?: boolean;
   ok?: number;
   failed?: number;
 };

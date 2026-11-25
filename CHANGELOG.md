@@ -3,6 +3,46 @@
 Sift's releases. The release workflow (`.github/workflows/release.yml`) takes a release's notes
 from its section here.
 
+## Unreleased
+
+Fixes from the audit of alpha.2 (docs/AUDIT.md, rounds 1 to 3), and the Engine page's server
+panels.
+
+**Conversion**
+- Cancel no longer writes anything for the PDF in progress. Before, it carried on with every
+  model request failing, wrote a degraded Markdown and report over the earlier good ones, and
+  marked them up to date, so a later folder run skipped the PDF. Cancel now also stops the
+  layout at its next batch instead of the last page.
+- A model answer can no longer crash or hang a run: surya's HTML is cut off past 256 nested
+  tags (a looping answer overflowed the stack), and merged-cell spans are capped at the HTML
+  standard's limits (a made-up `colspan="99999999"` hung the run).
+- Folder mode keeps the options each Markdown was made with (`.sift-options`): a quick test run
+  (`--pages 1-2 --no-llm`) no longer counts as the real conversion on the next run.
+- An unreadable PDF says why in words; a missing pdfium says where it belongs and where Sift
+  looked (it pointed to a command that does not exist).
+
+**The window**
+- Engine page: for each model server, the command Sift starts it with (read-only, with Copy)
+  and the end of its log, followed live while it runs.
+- After Cancel the stages stay where the work was (they used to tick the ones whose requests
+  failed at once), and the result card says what was kept.
+- The window opens only what Sift writes (folders, `.md`, `.txt`).
+
+**Engine and models**
+- Names from the llama.cpp release list and a build name given to Use must be plain names
+  inside the engine folder, never a path.
+- A download already complete (stopped while being checked) is checked instead of downloaded
+  again.
+- `sift config show` lists the `SIFT_` environment variables that override the file shown.
+- `scripts\build-cuda.cmd` (the layout on the GPU) finds Visual Studio again.
+
+**Development**
+- `bun scripts/precommit.ts` runs the routine's checks in one command (`--full` adds the release
+  build and the golden test); git runs it on commit once `bun run hooks:install` turned it on.
+- Unused code removed; clippy runs with warnings as errors.
+
+The conversion is unchanged where nothing was cancelled: the golden test is 14/14 identical.
+
 ## 1.0.0-alpha.2 (2026-11-25)
 
 The first release with an installer, and a new window.

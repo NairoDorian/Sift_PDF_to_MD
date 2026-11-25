@@ -128,14 +128,17 @@ pub fn run(
         return Ok((0, vec![]));
     }
     let mode = cfg.convert.mode.clone();
-    let rt =
+    let mut rt =
         Runtime::new(cfg, opts.pipeline.clone(), events.clone(), store.clone(), out_root.join(".sift").join("logs"))?;
+    rt.cancel = opts.cancel.clone();
     events.emit("job_start", json!({"files": todo.len(), "output": out_root.display().to_string(), "mode": mode, "describer": opts.pipeline.describer, "engine": rt.engine, "skipped": skipped}));
     let mut results = Vec::new();
     let n = todo.len();
     let done = |r: &FileResult| {
         if let Some(e) = &r.error {
-            events.emit("file_error", json!({"file": r.pdf.display().to_string(), "error": e}));
+            // `cancelled`: stopped by Cancel, nothing written for it (Runtime::check_cancel)
+            events
+                .emit("file_error", json!({"file": r.pdf.display().to_string(), "error": e, "cancelled": r.cancelled}));
         } else {
             if let Some(dir) = r.md.as_deref().and_then(Path::parent) {
                 // best effort: without it the file only counts as up to date by its date, as before
@@ -187,7 +190,12 @@ pub fn run(
                     pending = Some(s.spawn(move || job.finalize()));
                 }
                 Err(e) => {
-                    let r = FileResult { pdf: pdf.clone(), error: Some(format!("{e:#}")), ..Default::default() };
+                    let r = FileResult {
+                        pdf: pdf.clone(),
+                        cancelled: e.is::<crate::pipeline::Cancelled>(),
+                        error: Some(format!("{e:#}")),
+                        ..Default::default()
+                    };
                     done(&r);
                     results.push(r);
                     if i + 1 == n {
