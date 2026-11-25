@@ -416,6 +416,9 @@ the text layer).
    | LR20xx | 46.76 | 56.13 |
    | Wio | 121.52 | 136.38 |
 
+   These are the reference runs' answers (the golden test replays them). Live runs on today's
+   engines answer slightly differently: Wio scores 122.26 live (b12600 and b12728, layout on
+   the CPU or the GPU; docs/LEARNINGS.md), which is the bar for a live run.
    Also: surya's table values verified at 99.5 % or more, and no new unresolved table values.
 3. **Speed:** not slower than 355 s (LR20xx) and 86 s (Wio), cold, on this machine.
 4. **Engine:** every build verified before it becomes active; rollback always possible; nothing

@@ -92,6 +92,12 @@ to beat.
   and their layout ran on the CPU (the release build) where the reference ran on the GPU: rf-detr
   differs between the two near its 0.4 threshold (AGENTS.md). Compare live scores with the
   GPU layout build (`scripts/build-cuda.cmd`), or record the CPU build's own baseline.
+  Done the same evening: the GPU layout build (`target-cuda`, CUDA 13.4 toolkit) scores 122.26
+  too, with exactly the same differences (the title's split, the five heading levels, `PO`), so
+  the layout device is not it either. What is left is the answers themselves: the reference holds
+  its own run's (an older engine, V0's layout), and live runs on b12600 and b12728 answer the same
+  way with the layout on the CPU or the GPU. Live baseline: 122.26; the golden test (121.52,
+  replayed) guards the code.
 
 ## Quality against marker (scorecard v2, errors per 1,000 PDF words, lower is better)
 

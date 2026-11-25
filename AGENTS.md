@@ -210,7 +210,9 @@ Sift_PDF_to_MD/
   `target-cuda/`): 68 ms/page instead of 280 on the CPU. The build needs the CUDA toolkit **13.4**
   (cudarc 0.19 panics on 13.5: the script puts 13.4 first on PATH), MSVC's `cl.exe` (vcvars64) and
   `CL=/Zc:preprocessor`; any C dependency built `/MD` breaks the link with LNK2038.
-  `SIFT_LAYOUT_DEVICE=cpu` forces the CPU.
+  `SIFT_LAYOUT_DEVICE=cpu` forces the CPU. The link warns LNK4098 (LIBCMT against the kernels'
+  objects); the binary runs (Wio converted end to end, 2026-11-25). The first build took 79 min
+  here (nvcc compiles candle's kernels; at low priority on a busy machine).
 - Tauri 3 is alpha: the Tauri crates, `@tauri-apps/*` and `tauri-plugin-dialog` (plugins-workspace
   `v3` branch) must agree; update them together with `scripts/update-deps.ts`, never one by hand.
 - Solid 2 batches writes: a signal read right after its setter, in the same frame, still returns
