@@ -44,7 +44,10 @@ jobs:
       - name: Version
         id: version
         shell: bash
-        run: echo "v=$(grep -m1 -o '"version": "[^"]*"' app/src-tauri/tauri.conf.json | cut -d'"' -f4)" >> "$GITHUB_OUTPUT"
+        run: |
+          v=$(grep -m1 -o '"version": "[^"]*"' app/src-tauri/tauri.conf.json | cut -d'"' -f4)
+          echo "version $v"
+          echo "v=$v" >> "$GITHUB_OUTPUT"
 
       - name: Build the installer
         working-directory: app
