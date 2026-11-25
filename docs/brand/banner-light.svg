@@ -11,11 +11,10 @@
 @media (prefers-reduced-motion:reduce){.sv,.g,.feed,.ln{animation:none}.feed{opacity:0}.g{opacity:.8;transform:translateY(var(--s))}}
 </style>
 <rect x=".5" y=".5" width="1279" height="399" fill="#f4f2ee" stroke="#16171a1f"/>
-<defs><clipPath id="m"><path d="M5.5 7.2A10.5 9.5 0 0 0 26.5 7.2Z"/></clipPath><clipPath id="b"><path d="M974 168A66 50 0 0 0 1106 168Z"/></clipPath></defs>
+<defs><clipPath id="m"><path d="M5.5 11.2A10.5 9.5 0 0 0 26.5 11.2Z"/></clipPath><clipPath id="b"><path d="M974 168A66 50 0 0 0 1106 168Z"/></clipPath></defs>
 <g transform="translate(84 112) scale(5.4)">
-<g clip-path="url(#m)"><path d="M-7 4L9 20M-2 4L14 20M3 4L19 20M8 4L24 20M13 4L29 20M18 4L34 20M23 4L39 20M39 4L23 20M34 4L18 20M29 4L13 20M24 4L8 20M19 4L3 20M14 4L-2 20M9 4L-7 20" fill="none" stroke="#16171a" stroke-width="1" stroke-opacity=".82"/></g>
-<path d="M3.5 7.2H28.5M5.5 7.2A10.5 9.5 0 0 0 26.5 7.2" fill="none" stroke="#16171a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M10 21.8H18.2M10 25.4H23.2" fill="none" stroke="#f5a524" stroke-width="2.4" stroke-linecap="round"/>
+<g clip-path="url(#m)"><path d="M-7 8L9 24M-2 8L14 24M3 8L19 24M8 8L24 24M13 8L29 24M18 8L34 24M23 8L39 24M39 8L23 24M34 8L18 24M29 8L13 24M24 8L8 24M19 8L3 24M14 8L-2 24M9 8L-7 24" fill="none" stroke="#16171a" stroke-width="1" stroke-opacity=".82"/></g>
+<path d="M3.5 11.2H28.5M5.5 11.2A10.5 9.5 0 0 0 26.5 11.2" fill="none" stroke="#16171a" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
 </g>
 <text x="292" y="214" fill="#16171a" style="font:600 118px 'Segoe UI Variable Display','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif;letter-spacing:-2px">Sift</text>
 <text x="296" y="264" fill="#16171a" style="font:500 29px 'Segoe UI Variable Display','Segoe UI',-apple-system,BlinkMacSystemFont,'Helvetica Neue',Arial,sans-serif">PDFs to Markdown you can trust</text>

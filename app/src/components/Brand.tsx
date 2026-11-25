@@ -1,10 +1,10 @@
 import type { JSX } from "@solidjs/web";
-import { BOWL, BOWL_AREA, NET, RIM, STROKE, TEXT_LINES } from "../lib/brand";
+import { BOWL, BOWL_AREA, NET, RIM, STROKE } from "../lib/brand";
 
 let instances = 0;
 
-/** The mark, drawn from lib/brand.ts (the same geometry as the app icon): the strainer in the
- * text colour, its two lines of text in the accent. */
+/** The mark, drawn from lib/brand.ts (the same geometry as the app icon): the strainer, in the
+ * text colour. */
 export function BrandMark(props: { size?: number; title?: string }): JSX.Element {
   const clip = `sift-bowl-${++instances}`;
   return (
@@ -26,7 +26,6 @@ export function BrandMark(props: { size?: number; title?: string }): JSX.Element
         <path d={NET} fill="none" stroke="currentColor" stroke-width={STROKE.net} stroke-opacity="0.82" />
       </g>
       <path d={RIM + BOWL} fill="none" stroke="currentColor" stroke-width={STROKE.frame} stroke-linecap="round" stroke-linejoin="round" />
-      <path d={TEXT_LINES} fill="none" stroke="var(--accent)" stroke-width={STROKE.text} stroke-linecap="round" />
     </svg>
   );
 }

@@ -3,7 +3,8 @@ import type { JSX } from "@solidjs/web";
 /* Sift's icons: drawn for this app on a 24-unit grid, 1.7 stroke, round caps (the weight of
    ZER0's icons; no icon library in the dependency list). */
 const PATHS = {
-  sieve: "M3 7.5h18M4.6 7.5a7.4 7 0 0 0 14.8 0M8.5 7.5l3.5 6.5 3.5-6.5M7 18.5h6M7 21h9",
+  // the mark's strainer alone, centred like it (brand.ts)
+  sieve: "M3 8.5h18M4.6 8.5a7.4 7 0 0 0 14.8 0M8.5 8.5l3.5 6.5 3.5-6.5",
   setup: "M10 6h10M10 12h10M10 18h10M4 6l1.5 1.5L8 5M4 12l1.5 1.5L8 11M4 18l1.5 1.5L8 17",
   engine: "M7 7h10v10H7zM10.5 10.5h3v3h-3zM10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4",
   models: "M12 3l8 4.5v9L12 21l-8-4.5v-9zM12 12l8-4.5M12 12v9M12 12L4 7.5",

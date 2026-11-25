@@ -17,7 +17,7 @@ import { spawnSync } from "node:child_process";
 import { mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { BOWL, BOWL_AREA, BRAND, NET, RIM, STROKE, TEXT_LINES, markSvg } from "../app/src/lib/brand";
+import { BOWL, BOWL_AREA, BRAND, NET, RIM, STROKE, markSvg } from "../app/src/lib/brand";
 
 const ROOT = join(import.meta.dir, "..");
 const APP = join(ROOT, "app");
@@ -109,7 +109,6 @@ function banner(t: Theme): string {
 <g transform="translate(84 112) scale(${markScale})">
 <g clip-path="url(#m)"><path d="${NET}" fill="none" stroke="${t.ink}" stroke-width="${STROKE.net}" stroke-opacity=".82"/></g>
 <path d="${RIM}${BOWL}" fill="none" stroke="${t.ink}" stroke-width="${STROKE.frame}" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="${TEXT_LINES}" fill="none" stroke="${t.fill}" stroke-width="${STROKE.text}" stroke-linecap="round"/>
 </g>
 <text x="292" y="214" fill="${t.ink}" style="font:600 118px ${FONT};letter-spacing:-2px">Sift</text>
 <text x="296" y="264" fill="${t.ink}" style="font:500 29px ${FONT}">PDFs to Markdown you can trust</text>
@@ -139,8 +138,8 @@ ${mdLines}
 
 mkdirSync(DOCS, { recursive: true });
 writeFileSync(join(DOCS, "sift-icon.svg"), markSvg({ tile: true, size: 256, id: "sift-icon" }));
-writeFileSync(join(DOCS, "sift-mark-dark.svg"), markSvg({ ink: THEMES.dark.ink, accent: BRAND.accent, size: 128, id: "sift-mark" }));
-writeFileSync(join(DOCS, "sift-mark-light.svg"), markSvg({ ink: THEMES.light.ink, accent: BRAND.accent, size: 128, id: "sift-mark" }));
+writeFileSync(join(DOCS, "sift-mark-dark.svg"), markSvg({ ink: THEMES.dark.ink, size: 128, id: "sift-mark" }));
+writeFileSync(join(DOCS, "sift-mark-light.svg"), markSvg({ ink: THEMES.light.ink, size: 128, id: "sift-mark" }));
 writeFileSync(join(DOCS, "banner-dark.svg"), banner(THEMES.dark));
 writeFileSync(join(DOCS, "banner-light.svg"), banner(THEMES.light));
 console.log("docs/brand: sift-icon.svg, sift-mark-dark.svg, sift-mark-light.svg, banner-dark.svg, banner-light.svg");

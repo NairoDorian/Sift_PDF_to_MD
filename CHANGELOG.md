@@ -29,6 +29,7 @@ panels.
 - After Cancel the stages stay where the work was (they used to tick the ones whose requests
   failed at once), and the result card says what was kept.
 - The window opens only what Sift writes (folders, `.md`, `.txt`).
+- The mark and the app icon are the strainer alone: the two amber lines under it are gone.
 
 **Engine and models**
 - Names from the llama.cpp release list and a build name given to Use must be plain names
