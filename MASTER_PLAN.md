@@ -379,9 +379,12 @@ the text layer).
    one, the golden test after each, `docs/AUDIT.md` updated with what was found.
 1. **Live check** on this machine: cold runs of LR20xx and Wio with the new folders (engine and
    models in `engine\`, `models\` at the repository root). Exit: LR20xx at most 355 s, Wio at most 86 s; errors per
-   1,000 PDF words at most 46.8 and 121.5; report reviewed; logs read. The check of 2026-11-16
-   found a newer official build (b12428-cuda-13.5; active b12368): update with the user's OK
-   (`sift engine update` or the Engine page), then compare a live Wio run with the last one.
+   1,000 PDF words at most 46.8 and 121.5; report reviewed; logs read. Engine updated to
+   b12728-cuda-13.5 on 2026-11-25 with the user's OK (b12600 kept as previous): Wio's Markdown is
+   identical to b12600's outside the image descriptions, scorecard 122.26 on both builds
+   (docs/LEARNINGS.md: the 0.7 over the bar predates the update, to trace). Still to do: the
+   timings, on an idle machine (that day's runs were 103 to 116 s with the machine busy), and
+   LR20xx.
    The window was redesigned and walked page by page on 2026-11-25 (dev preview and the real
    app); a live conversion from the window is part of this check.
 2. **Window, ZER0 parity**: the live log ring of each llama-server on the Engine page (ZER0

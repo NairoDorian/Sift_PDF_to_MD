@@ -79,6 +79,13 @@ to beat.
   waited for a stop signal that never came in a console-less run).
 - Layout runs batch by batch so surya gets its first tables after 8 pages.
 - Cold, LLM pass on: LR20xx (250 pages) 355 s (surya 184 s, Gemma 159 s), Wio (23 pages) 86 s.
+- Engine b12600 -> b12728 (2026-11-25), Wio cold, same release binary (CPU layout), back to back:
+  the Markdown is identical outside the image descriptions (Gemma's wording varies run to run,
+  also between two runs of one build); scorecard v2 122.26 errors per 1,000 PDF words on both
+  builds and on a second b12728 run. Speed not measurable that day (the machine was busy:
+  103 s and 116 s on b12728, 110 s on b12600 in between); re-time Wio and LR20xx when it is idle.
+  The 122.26 against the 121.52 measured before is the same on both builds, so it is not the
+  engine: to trace (the page-size fix of 2b9a178 changed Wio's pages).
 
 ## Quality against marker (scorecard v2, errors per 1,000 PDF words, lower is better)
 

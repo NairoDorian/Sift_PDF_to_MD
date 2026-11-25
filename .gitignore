@@ -19,6 +19,9 @@ app/src-tauri/gen/
 .sift/
 *.part
 
+# an assistant's local permission settings (personal, never shared)
+.claude/settings.local.json
+
 # editors and OS
 .vscode/
 .idea/
