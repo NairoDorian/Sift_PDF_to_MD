@@ -245,8 +245,12 @@ footer.status .meter-bar i { display: block; height: 100%; background: var(--acc
 footer.status .meter-bar i.warn { background: var(--warn); }
 footer.status .meter-bar i.hot { background: var(--error); }
 footer.status .meter-value { width: 4ch; text-align: right; font: 10px/1 var(--font-mono); }
-/* a narrow window keeps the stage text: the meters go first */
-@media (max-width: 1100px) { footer.status .meters, footer.status .meters + .sep { display: none; } }
+/* Short of room the stage text stays: the version goes first, then the build, then the meters.
+   Measured on the footer itself (a container), so the sidebar's width counts. */
+footer.status { container: status / inline-size; }
+@container status (max-width: 1300px) { footer.status .version { display: none; } }
+@container status (max-width: 1080px) { footer.status .build { display: none; } }
+@container status (max-width: 820px) { footer.status .meters { display: none; } }
 
 /* ---- primitives ---------------------------------------------------------------------------- */
 

@@ -67,7 +67,8 @@ export function Footer(): JSX.Element {
     if (converting() && j) {
       const st = j.stages[j.stage];
       const what = STAGE_WORD[j.stage] ?? "starting";
-      return `${fileName(j.file || j.input)} · ${what}${st ? ` ${st.done}/${st.total}` : ""} · ${Math.round(j.progress * 100)}%`;
+      // the stage first: when the footer is short of room, the file's name is what gets cut
+      return `${what}${st ? ` ${st.done}/${st.total}` : ""} · ${Math.round(j.progress * 100)}% · ${fileName(j.file || j.input)}`;
     }
     if (!overview()) return "";
     return ready() ? "Ready" : "Setup needed";
@@ -85,16 +86,18 @@ export function Footer(): JSX.Element {
       <span class="sep">|</span>
       <span class="grow">{status()}</span>
       <Meters />
-      <span class="sep">|</span>
       <Show when={updateAvailable()}>
+        <span class="sep">|</span>
         <button class="link" onClick={() => setPage("engine")}>
           update available
         </button>
-        <span class="sep">|</span>
       </Show>
-      <span class="mono">llama.cpp {engine()?.active ?? "not installed"}</span>
-      <span class="sep">|</span>
-      <span class="mono">v{overview()?.version ?? ""}</span>
+      {/* short of room, these go first (styles.css): the version, then the build (both on About
+          and Engine), then the meters; the servers and the stage always stay */}
+      <span class="sep build">|</span>
+      <span class="mono build">llama.cpp {engine()?.active ?? "not installed"}</span>
+      <span class="sep version">|</span>
+      <span class="mono version">v{overview()?.version ?? ""}</span>
     </footer>
   );
 }
