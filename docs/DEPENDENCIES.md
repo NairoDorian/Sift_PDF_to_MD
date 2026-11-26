@@ -25,6 +25,8 @@ Versions are always the newest published, prereleases included: `bun scripts/upd
 | windows-sys | the Job Object that kills model servers with Sift | windows: larger; Sift needs 4 functions |
 | tauri, tauri-runtime-wry, tauri-build | the window (Tauri 3) | (ZER0's set) |
 | tauri-plugin-dialog | folder pickers for the engine and models folders (called from Rust; Tauri's own plugins-workspace, `v3` branch, as ZER0) | typing paths only |
+| tauri-specta (git: `NairoDorian/tauri-specta-v3`, `main`) | the window's commands and events, typed: `app/src/lib/bindings.ts` is generated from `main.rs` and `ipc.rs`, with a mock typed against the same commands for the browser preview. Upstream publishes for Tauri 2 only and its `main` needs command metadata no Tauri 3 build has; the maintainer's fork is upstream `main` plus the `#[specta::specta]` collector (as ZER0) | hand-written TypeScript types: they had drifted (the preview's About data lacked a field the app sends) |
+| specta, specta-typescript | the Rust-to-TypeScript types behind tauri-specta, at exactly the versions it builds against (`update-deps` holds them); sift-core derives `specta::Type` only behind its `specta` feature, which only the window turns on | |
 
 ## The window (npm, `app/package.json`)
 
@@ -38,7 +40,8 @@ Versions are always the newest published, prereleases included: `bun scripts/upd
 
 - **A database** (SQLite): nothing in Sift needs one; its bundled C library is built against the
   dynamic C runtime, which can't link with candle's CUDA kernels (static runtime, LNK2038).
-- **sysinfo / nvml-wrapper** (ZER0's live meters): the About page reads `nvidia-smi`, which every
-  NVIDIA driver installs; live meters can come later if they earn a dependency.
+- **sysinfo / nvml-wrapper** (ZER0's live meters): the footer's meters use Windows' own calls and
+  the driver's `nvml.dll` through libloading (`sift_core::meters`), and the About page reads
+  `nvidia-smi`, which every NVIDIA driver installs.
 - **mimalloc**: measured no faster, and its dynamic C runtime breaks the CUDA layout build.
 - **A Hugging Face library**: model downloads are plain HTTP range requests + sha256.

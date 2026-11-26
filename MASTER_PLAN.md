@@ -398,8 +398,10 @@ the text layer).
    workflow files; `--full` adds the release build and the golden test); the footer's meters
    (CPU, RAM, GPU, VRAM) without ZER0's two dependencies: Windows' own calls and the driver's
    `nvml.dll` through libloading, one thread that samples once a second only while the window
-   shows. Not taken: typed commands with tauri-specta (its newest, 2.0.0-rc.29 of 2026-11-13,
-   needs Tauri 2; Sift is on Tauri 3): the command types stay hand-written in `lib/api.ts`.
+   shows. Typed commands and events (2026-11-26): tauri-specta publishes for Tauri 2 only, so
+   Sift uses the maintainer's Tauri 3 fork (as ZER0), brought up to upstream `main` the same
+   day; `app/src/lib/bindings.ts` is generated from `main.rs` and `ipc.rs`, the browser
+   preview's mock is typed against the same commands, and the gate checks the file.
 3. **Window check** (done 2026-11-25): the first-run flow on fresh settings files
    (`SIFT_SETTINGS`): Setup 0/4, both folders, llama.cpp installed into an empty folder (226 MB),
    the three models downloaded into an empty folder (6 GB in 147 s with their checks), then Wio

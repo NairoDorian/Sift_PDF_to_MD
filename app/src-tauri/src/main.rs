@@ -3,32 +3,30 @@
 //! - With a subcommand (`sift-app convert ...`, `sift-app engine update`), the binary runs
 //!   headless: the very same command line as `sift`, no window.
 //! - Without one it opens the window. Commands never block the webview (ZER0's rule): long work
-//!   runs on its own thread and reports through events (`sift-event`: docs/events.md,
-//!   `engine-log`, `engine-progress`, `engine-done`, `engine-check`, `model-progress`,
-//!   `model-done`, `sift-done`).
+//!   runs on its own thread and reports through events (`ipc.rs`; `sift-event` is docs/events.md).
+//! - The commands and events are typed: tauri-specta writes them into `app/src/lib/bindings.ts`
+//!   (a debug start-up rewrites it when it changed; the `bindings_are_current` test checks it).
 //! - Settings: the one `settings.toml` shared with the command line (`sift_core::paths`); the
 //!   engine and the models live only in the folders the user picks here.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+mod ipc;
 
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, LazyLock, Mutex};
 
-use serde::Deserialize;
-use serde_json::{Value, json};
+use ipc::*;
 use sift_core::config::Config;
-use tauri::{AppHandle, Emitter};
+use tauri::AppHandle;
 use tauri_plugin_dialog::DialogExt;
+use tauri_specta::Event;
 
 static BUSY: AtomicBool = AtomicBool::new(false);
 static CANCEL: LazyLock<Mutex<Option<Arc<AtomicBool>>>> = LazyLock::new(|| Mutex::new(None));
 
 fn err(e: anyhow::Error) -> String {
     format!("{e:#}")
-}
-
-fn emit(app: &AppHandle, ev: &str, v: Value) {
-    let _ = app.emit(ev, v);
 }
 
 /// Run `job` on its own thread unless another long job (conversion, engine install) runs.
@@ -45,29 +43,8 @@ fn exclusive(job: impl FnOnce() + Send + 'static) -> Result<(), String> {
 
 // ---- conversion ------------------------------------------------------------------------
 
-/// One run from the Convert page. The options are the page's switches, sent as they are shown
-/// (the page also saves them, so the window and the command line share one set of defaults);
-/// `pages`, `recursive`, `force` and `output` belong to this run only.
-#[derive(Deserialize)]
-struct ConvertRequest {
-    input: String,
-    output: Option<String>,
-    pages: Option<String>,
-    recursive: bool,
-    force: bool,
-    /// `gemma` or `off`
-    describer: String,
-    /// the LLM pass ([llm] enabled)
-    llm: bool,
-    /// `hybrid` or `full-ocr`
-    mode: String,
-    /// `auto` or `markdown`
-    tables: String,
-    keep_headers: bool,
-    image_dpi: Option<u32>,
-}
-
 #[tauri::command]
+#[specta::specta]
 fn start_convert(app: AppHandle, req: ConvertRequest) -> Result<(), String> {
     let cancel = Arc::new(AtomicBool::new(false));
     let c2 = cancel.clone();
@@ -89,7 +66,9 @@ fn start_convert(app: AppHandle, req: ConvertRequest) -> Result<(), String> {
             cfg.llm.enabled = req.llm;
             let events = Arc::new(sift_core::events::Events::new(false));
             let a2 = app.clone();
-            events.sinks.lock().unwrap().push(Box::new(move |v| emit(&a2, "sift-event", v.clone())));
+            events.sinks.lock().unwrap().push(Box::new(move |v| {
+                let _ = ConvertEvent(v.clone()).emit(&a2);
+            }));
             let store = Arc::new(sift_core::answers::AnswerStore::new(None, vec![], false));
             let opts = sift_core::batch::BatchOptions {
                 output: req.output.filter(|o| !o.trim().is_empty()).map(Into::into),
@@ -107,16 +86,18 @@ fn start_convert(app: AppHandle, req: ConvertRequest) -> Result<(), String> {
             Ok(sift_core::batch::run(cfg, Path::new(&req.input), opts, events, store)?.0)
         })();
         let cancelled = c2.load(Ordering::Relaxed);
-        match r {
-            Ok(code) => emit(&app, "sift-done", json!({"ok": code == 0 && !cancelled, "cancelled": cancelled})),
-            Err(e) => emit(&app, "sift-done", json!({"ok": false, "cancelled": cancelled, "error": format!("{e:#}")})),
-        }
+        let done = match r {
+            Ok(code) => ConvertDone { ok: code == 0 && !cancelled, cancelled, error: None },
+            Err(e) => ConvertDone { ok: false, cancelled, error: Some(format!("{e:#}")) },
+        };
+        let _ = done.emit(&app);
         *CANCEL.lock().unwrap() = None;
     })
 }
 
 /// Cancel: queued work stops first, then the model servers; no model starts afterwards.
 #[tauri::command]
+#[specta::specta]
 fn cancel_convert() -> bool {
     match CANCEL.lock().unwrap().as_ref() {
         Some(c) => {
@@ -130,18 +111,20 @@ fn cancel_convert() -> bool {
 // ---- settings and folders ------------------------------------------------------------------
 
 #[tauri::command]
-async fn settings_get() -> Result<Value, String> {
-    serde_json::to_value(Config::load_saved().map_err(err)?).map_err(|e| e.to_string())
+#[specta::specta]
+async fn settings_get() -> Result<Config, String> {
+    Config::load_saved().map_err(err)
 }
 
 #[tauri::command]
-async fn settings_save(settings: Value) -> Result<(), String> {
-    let c: Config = serde_json::from_value(settings).map_err(|e| e.to_string())?;
-    c.save().map_err(err)
+#[specta::specta]
+async fn settings_save(settings: Config) -> Result<(), String> {
+    settings.save().map_err(err)
 }
 
 /// A folder picker (the dialog plugin, called from Rust: the page needs no plugin permission).
 #[tauri::command]
+#[specta::specta]
 async fn pick_folder(app: AppHandle, title: String) -> Option<String> {
     app.dialog()
         .file()
@@ -153,6 +136,7 @@ async fn pick_folder(app: AppHandle, title: String) -> Option<String> {
 
 /// A one-PDF picker for the Convert page.
 #[tauri::command]
+#[specta::specta]
 async fn pick_pdf(app: AppHandle) -> Option<String> {
     app.dialog()
         .file()
@@ -166,16 +150,18 @@ async fn pick_pdf(app: AppHandle) -> Option<String> {
 /// What the Convert page shows about its input: a PDF (pages, size) or a folder (how many PDFs,
 /// at its top level and with its subfolders: the same list a conversion walks, `batch::find_pdfs`).
 #[tauri::command]
-async fn input_info(path: String) -> Result<Value, String> {
+#[specta::specta]
+async fn input_info(path: String) -> Result<InputInfo, String> {
     let p = PathBuf::from(path.trim());
     tauri::async_runtime::spawn_blocking(move || {
         let meta = std::fs::metadata(&p).map_err(|e| format!("{}: {e}", p.display()))?;
         let name = p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| p.display().to_string());
         let dir = p.parent().map(|d| d.display().to_string()).unwrap_or_default();
+        let path = p.display().to_string();
         if meta.is_dir() {
-            let top = sift_core::batch::find_pdfs(&p, false).len();
-            let all = sift_core::batch::find_pdfs(&p, true).len();
-            return Ok(json!({"kind": "folder", "name": name, "dir": dir, "path": p.display().to_string(), "pdfs": top, "pdfs_all": all}));
+            let pdfs = sift_core::batch::find_pdfs(&p, false).len();
+            let pdfs_all = sift_core::batch::find_pdfs(&p, true).len();
+            return Ok(InputInfo::Folder { name, dir, path, pdfs, pdfs_all });
         }
         if !p.extension().is_some_and(|e| e.eq_ignore_ascii_case("pdf")) {
             return Err(format!("{name} is not a PDF"));
@@ -183,7 +169,7 @@ async fn input_info(path: String) -> Result<Value, String> {
         // the page count is a nicety: a PDF pdfium cannot open still goes to the converter,
         // which reports the reason
         let pages = sift_core::pdf::pdfium::Document::open(&p, false).ok().map(|d| d.page_count);
-        Ok(json!({"kind": "pdf", "name": name, "dir": dir, "path": p.display().to_string(), "size": meta.len(), "pages": pages}))
+        Ok(InputInfo::Pdf { name, dir, path, size: meta.len(), pages })
     })
     .await
     .map_err(|e| e.to_string())?
@@ -191,6 +177,7 @@ async fn input_info(path: String) -> Result<Value, String> {
 
 /// The first lines of a converted Markdown file, for the result card.
 #[tauri::command]
+#[specta::specta]
 async fn md_preview(path: String, max_bytes: Option<usize>) -> Result<String, String> {
     let p = PathBuf::from(&path);
     if !p.extension().is_some_and(|e| e.eq_ignore_ascii_case("md")) {
@@ -210,14 +197,18 @@ async fn md_preview(path: String, max_bytes: Option<usize>) -> Result<String, St
 /// new one (same drive: a rename); otherwise the new folder is used as it is. The old folder is
 /// never deleted here.
 #[tauri::command]
-async fn set_folder(kind: String, path: String, move_files: bool) -> Result<Value, String> {
+#[specta::specta]
+async fn set_folder(kind: FolderKind, path: String, move_files: bool) -> Result<FolderMove, String> {
     let new = PathBuf::from(path.trim());
     std::fs::create_dir_all(&new).map_err(|e| format!("cannot use {}: {e}", new.display()))?;
     let probe = new.join(".sift-write-test");
     std::fs::write(&probe, b"").map_err(|e| format!("{} is not writable: {e}", new.display()))?;
     let _ = std::fs::remove_file(&probe);
     let mut cfg = Config::load_saved().map_err(err)?;
-    let old = if kind == "engine" { cfg.folders.engine_dir.clone() } else { cfg.folders.models_dir.clone() };
+    let old = match kind {
+        FolderKind::Engine => cfg.folders.engine_dir.clone(),
+        FolderKind::Models => cfg.folders.models_dir.clone(),
+    };
     let mut moved = Vec::new();
     if move_files && !old.trim().is_empty() && Path::new(&old) != new.as_path() {
         for e in std::fs::read_dir(&old).map_err(|e| e.to_string())?.flatten() {
@@ -236,27 +227,28 @@ async fn set_folder(kind: String, path: String, move_files: bool) -> Result<Valu
         }
     }
     let s = new.display().to_string();
-    if kind == "engine" {
-        cfg.folders.engine_dir = s;
-    } else {
-        cfg.folders.models_dir = s;
+    match kind {
+        FolderKind::Engine => cfg.folders.engine_dir = s,
+        FolderKind::Models => cfg.folders.models_dir = s,
     }
     cfg.save().map_err(err)?;
-    Ok(json!({"moved": moved, "old": old}))
+    Ok(FolderMove { moved, old })
 }
 
 /// The model servers' command lines as Sift would start them now (Engine page, read-only).
 #[tauri::command]
-async fn server_commands() -> Result<Value, String> {
+#[specta::specta]
+async fn server_commands() -> Result<Vec<ServerCommand>, String> {
     let cfg = Config::load(None).map_err(err)?;
     let lines = sift_core::pipeline::server_command_lines(&cfg).map_err(err)?;
-    Ok(json!(lines.into_iter().map(|(model, args)| json!({"model": model, "args": args})).collect::<Vec<_>>()))
+    Ok(lines.into_iter().map(|(model, args)| ServerCommand { model, args }).collect())
 }
 
 /// The end of a model server's newest log in a run's output folder (`<output>\.sift\logs`): the
 /// Engine page shows it while a server runs, and the last run's afterwards.
 #[tauri::command]
-async fn server_log(model: String, output: String) -> Result<Value, String> {
+#[specta::specta]
+async fn server_log(model: String, output: String) -> Result<ServerLog, String> {
     use std::io::{Read, Seek, SeekFrom};
     if model != "surya" && model != "gemma" {
         return Err(format!("no model server named {model}"));
@@ -270,7 +262,7 @@ async fn server_log(model: String, output: String) -> Result<Value, String> {
             n.starts_with(&format!("{model}-")) && n.ends_with(".log")
         })
         .max_by_key(|e| e.metadata().and_then(|m| m.modified()).ok());
-    let Some(entry) = newest else { return Ok(json!({"file": null, "lines": []})) };
+    let Some(entry) = newest else { return Ok(ServerLog { file: None, lines: vec![] }) };
     let mut f = std::fs::File::open(entry.path()).map_err(|e| e.to_string())?;
     let len = f.metadata().map(|m| m.len()).unwrap_or(0);
     // the last 48 KB is plenty for the lines shown, whatever the log's size
@@ -282,14 +274,15 @@ async fn server_log(model: String, output: String) -> Result<Value, String> {
     if len > 48_000 && !lines.is_empty() {
         lines.remove(0); // a partial first line
     }
-    let tail: Vec<&str> = lines.iter().rev().take(80).rev().copied().collect();
-    Ok(json!({"file": entry.path().display().to_string(), "lines": tail}))
+    let tail = lines.iter().rev().take(80).rev().map(|l| l.to_string()).collect();
+    Ok(ServerLog { file: Some(entry.path().display().to_string()), lines: tail })
 }
 
 /// Open a folder in Explorer, or a file with its default app: only what Sift writes (the
 /// converted `.md`, the `.txt` report). Explorer *runs* a program it is handed, so nothing else
 /// goes through here.
 #[tauri::command]
+#[specta::specta]
 async fn open_path(path: String) -> Result<(), String> {
     let p = Path::new(&path);
     if !p.exists() {
@@ -307,6 +300,7 @@ async fn open_path(path: String) -> Result<(), String> {
 
 /// Show a file selected in its folder.
 #[tauri::command]
+#[specta::specta]
 async fn reveal_path(path: String) -> Result<(), String> {
     use std::os::windows::process::CommandExt;
     if !Path::new(&path).exists() {
@@ -322,6 +316,7 @@ async fn reveal_path(path: String) -> Result<(), String> {
 
 /// The About page's links (the repository, the licenses), in the default browser.
 #[tauri::command]
+#[specta::specta]
 async fn open_url(url: String) -> Result<(), String> {
     if !url.starts_with("https://") {
         return Err("only https links open".into());
@@ -331,64 +326,72 @@ async fn open_url(url: String) -> Result<(), String> {
 
 /// What the window needs to know at a glance (onboarding, footer, menu dot).
 #[tauri::command]
-async fn overview() -> Value {
+#[specta::specta]
+async fn overview() -> Overview {
     let cfg = Config::load_saved().unwrap_or_default();
-    let models: Vec<Value> = sift_core::models::all().unwrap_or_default().iter().map(|m| json!(m.status())).collect();
-    let s = sift_core::engine::status();
-    json!({
-        "version": env!("CARGO_PKG_VERSION"),
-        "settings_file": sift_core::paths::settings_file().display().to_string(),
-        "portable": sift_core::paths::portable_dir().is_some(),
-        "engine_dir": cfg.folders.engine_dir,
-        "models_dir": cfg.folders.models_dir,
-        "engine_active": s.active,
-        "models": models,
-        "check_at_startup": cfg.engine.check_at_startup,
-    })
+    Overview {
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        settings_file: sift_core::paths::settings_file().display().to_string(),
+        portable: sift_core::paths::portable_dir().is_some(),
+        engine_dir: cfg.folders.engine_dir,
+        models_dir: cfg.folders.models_dir,
+        engine_active: sift_core::engine::status().active,
+        models: sift_core::models::all().unwrap_or_default().iter().map(|m| m.status()).collect(),
+        check_at_startup: cfg.engine.check_at_startup,
+    }
 }
 
 // ---- the engine (ZER0's llama.cpp page) ----------------------------------------------------
 
 #[tauri::command]
-async fn engine_status() -> Value {
+#[specta::specta]
+async fn engine_status() -> EngineStatus {
     let s = sift_core::engine::status();
     let cfg = Config::load_saved().unwrap_or_default();
-    let builds: Vec<Value> = sift_core::engine::list().unwrap_or_default().iter().map(|b| json!(b)).collect();
-    json!({
-        "active": s.active, "previous": s.previous, "version": s.version,
-        "dir": s.dir.map(|d| d.display().to_string()),
-        "backend": cfg.engine.backend, "detected": sift_core::engine::detect_backend(),
-        "driver_cuda": sift_core::engine::driver_cuda().map(|(a, b)| format!("{a}.{b}")),
-        "toolkit": sift_core::engine::system_cudart_dir(if cfg.engine.backend.starts_with("cuda-") { &cfg.engine.backend } else { "cuda-13.5" }).map(|p| p.display().to_string()),
-        "include_cudart": cfg.engine.include_cudart,
-        "check_at_startup": cfg.engine.check_at_startup,
-        "builds": builds,
-    })
+    let cuda = if cfg.engine.backend.starts_with("cuda-") { cfg.engine.backend.as_str() } else { "cuda-13.5" };
+    EngineStatus {
+        active: s.active,
+        previous: s.previous,
+        version: s.version,
+        dir: s.dir.map(|d| d.display().to_string()),
+        detected: sift_core::engine::detect_backend(),
+        driver_cuda: sift_core::engine::driver_cuda().map(|(a, b)| format!("{a}.{b}")),
+        toolkit: sift_core::engine::system_cudart_dir(cuda).map(|p| p.display().to_string()),
+        builds: sift_core::engine::list().unwrap_or_default(),
+        backend: cfg.engine.backend,
+        include_cudart: cfg.engine.include_cudart,
+        check_at_startup: cfg.engine.check_at_startup,
+    }
 }
 
 /// Read the release list (no download) and tell the window whether a newer build exists.
 #[tauri::command]
-async fn engine_check(app: AppHandle) -> Result<Value, String> {
+#[specta::specta]
+async fn engine_check(app: AppHandle) -> Result<sift_core::engine::Check, String> {
     let backend = Config::load_saved().map_err(err)?.engine.backend;
     let c = tauri::async_runtime::spawn_blocking(move || sift_core::engine::check(&backend))
         .await
         .map_err(|e| e.to_string())?
         .map_err(err)?;
-    let v = json!(c);
-    emit(&app, "engine-check", v.clone());
-    Ok(v)
+    let _ = EngineChecked(c.clone()).emit(&app);
+    Ok(c)
 }
 
 /// Install or update: download, verify, switch (`tag`: a given build instead of the newest).
 #[tauri::command]
+#[specta::specta]
 fn engine_install(app: AppHandle, tag: Option<String>) -> Result<(), String> {
     let cfg = Config::load_saved().map_err(err)?;
     sift_core::paths::engine_dir().map_err(err)?;
     exclusive(move || {
         let a = app.clone();
-        let log = move |s: &str| emit(&a, "engine-log", json!({"message": s}));
+        let log = move |s: &str| {
+            let _ = EngineLog { message: s.to_string() }.emit(&a);
+        };
         let a2 = app.clone();
-        let progress = move |done: u64, total: u64| emit(&a2, "engine-progress", json!({"done": done, "total": total}));
+        let progress = move |done: u64, total: u64| {
+            let _ = EngineProgress { done, total }.emit(&a2);
+        };
         let backend = sift_core::engine::wanted_backend(&cfg.engine.backend);
         let r = sift_core::engine::install(
             tag.as_deref(),
@@ -397,43 +400,44 @@ fn engine_install(app: AppHandle, tag: Option<String>) -> Result<(), String> {
             &log,
             &progress,
         );
-        match r {
-            Ok(p) => emit(&app, "engine-done", json!({"ok": true, "build": p.display().to_string()})),
-            Err(e) => emit(&app, "engine-done", json!({"ok": false, "error": format!("{e:#}")})),
-        }
+        let done = match r {
+            Ok(p) => EngineDone { ok: true, build: Some(p.display().to_string()), message: None, error: None },
+            Err(e) => EngineDone { ok: false, build: None, message: None, error: Some(format!("{e:#}")) },
+        };
+        let _ = done.emit(&app);
     })
 }
 
 /// Use / Roll back / Delete / Remove the bundled CUDA runtime of an installed build.
 #[tauri::command]
-fn engine_action(app: AppHandle, action: String, build: Option<String>) -> Result<(), String> {
+#[specta::specta]
+fn engine_action(app: AppHandle, action: EngineAction, build: Option<String>) -> Result<(), String> {
     exclusive(move || {
         let a = app.clone();
-        let log = move |s: &str| emit(&a, "engine-log", json!({"message": s}));
-        let b = build.unwrap_or_default();
-        let r: anyhow::Result<String> = match action.as_str() {
-            "use" => sift_core::engine::use_build(&b, &log).map(|_| format!("{b} is active")),
-            "rollback" => sift_core::engine::rollback(&log).map(|p| format!("{} is active", p.display())),
-            "remove" => sift_core::engine::remove(&b).map(|_| format!("deleted {b}")),
-            "remove_runtime" => sift_core::engine::remove_cuda_runtime(&b).map(|mb| format!("freed {mb} MB from {b}")),
-            other => Err(anyhow::anyhow!("unknown action {other}")),
+        let log = move |s: &str| {
+            let _ = EngineLog { message: s.to_string() }.emit(&a);
         };
-        match r {
-            Ok(m) => emit(&app, "engine-done", json!({"ok": true, "message": m})),
-            Err(e) => emit(&app, "engine-done", json!({"ok": false, "error": format!("{e:#}")})),
-        }
+        let b = build.unwrap_or_default();
+        let r: anyhow::Result<String> = match action {
+            EngineAction::Use => sift_core::engine::use_build(&b, &log).map(|_| format!("{b} is active")),
+            EngineAction::Rollback => sift_core::engine::rollback(&log).map(|p| format!("{} is active", p.display())),
+            EngineAction::Remove => sift_core::engine::remove(&b).map(|_| format!("deleted {b}")),
+            EngineAction::RemoveRuntime => {
+                sift_core::engine::remove_cuda_runtime(&b).map(|mb| format!("freed {mb} MB from {b}"))
+            }
+        };
+        let done = match r {
+            Ok(m) => EngineDone { ok: true, build: None, message: Some(m), error: None },
+            Err(e) => EngineDone { ok: false, build: None, message: None, error: Some(format!("{e:#}")) },
+        };
+        let _ = done.emit(&app);
     })
 }
 
 // ---- the models ------------------------------------------------------------------------
 
 #[tauri::command]
-async fn models_status() -> Result<Value, String> {
-    let m: Vec<Value> = sift_core::models::all().map_err(err)?.iter().map(|m| json!(m.status())).collect();
-    Ok(json!({"models": m, "dir": sift_core::paths::models_dir().ok().map(|d| d.display().to_string())}))
-}
-
-#[tauri::command]
+#[specta::specta]
 fn model_download(app: AppHandle, id: String) -> Result<(), String> {
     sift_core::paths::models_dir().map_err(err)?;
     let entries = if id == "all" {
@@ -450,49 +454,63 @@ fn model_download(app: AppHandle, id: String) -> Result<(), String> {
                 let mut l = last.lock().unwrap();
                 if *l != step || done == total {
                     *l = step;
-                    emit(
-                        &a,
-                        "model-progress",
-                        json!({"id": e.id, "file": file, "phase": phase, "done": done, "total": total}),
-                    );
+                    let p = ModelProgress {
+                        id: e.id.clone(),
+                        file: file.to_string(),
+                        phase: phase.to_string(),
+                        done,
+                        total,
+                    };
+                    let _ = p.emit(&a);
                 }
             });
-            emit(&app, "model-done", json!({"id": e.id, "ok": r.is_ok(), "error": r.err().map(|x| format!("{x:#}"))}));
+            let _ = ModelDone { id: e.id.clone(), ok: r.is_ok(), error: r.err().map(|x| format!("{x:#}")) }.emit(&app);
         }
     });
     Ok(())
 }
 
 #[tauri::command]
-async fn model_verify(id: String) -> Result<Value, String> {
+#[specta::specta]
+async fn model_verify(id: String) -> Result<Vec<ModelFile>, String> {
     let e = sift_core::models::get(&id).map_err(err)?;
     let r = tauri::async_runtime::spawn_blocking(move || sift_core::models::verify(&e, &|_, _, _, _| {}))
         .await
         .map_err(|e| e.to_string())?
         .map_err(err)?;
-    Ok(json!(r.iter().map(|(f, ok)| json!({"file": f, "ok": ok})).collect::<Vec<_>>()))
+    Ok(r.into_iter().map(|(file, ok)| ModelFile { file, ok }).collect())
 }
 
 #[tauri::command]
+#[specta::specta]
 async fn model_delete(id: String) -> Result<(), String> {
     sift_core::models::delete(&sift_core::models::get(&id).map_err(err)?).map_err(err)
 }
 
 #[tauri::command]
-async fn models_check() -> Result<Value, String> {
-    let r = tauri::async_runtime::spawn_blocking(|| {
-        sift_core::models::all().map(|all| all.iter().map(|e| json!({"id": e.id, "pinned": e.revision, "upstream": sift_core::models::upstream_revision(e).ok()})).collect::<Vec<_>>())
+#[specta::specta]
+async fn models_check() -> Result<Vec<ModelRevision>, String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        sift_core::models::all().map(|all| {
+            all.iter()
+                .map(|e| ModelRevision {
+                    id: e.id.clone(),
+                    pinned: e.revision.clone(),
+                    upstream: sift_core::models::upstream_revision(e).ok(),
+                })
+                .collect::<Vec<_>>()
+        })
     })
     .await
     .map_err(|e| e.to_string())?
-    .map_err(err)?;
-    Ok(json!(r))
+    .map_err(err)
 }
 
 // ---- about -----------------------------------------------------------------------------
 
 #[tauri::command]
-async fn about_info() -> Value {
+#[specta::specta]
+async fn about_info() -> AboutInfo {
     let mut gpus = Vec::new();
     if let Ok(o) = std::process::Command::new("nvidia-smi")
         .args(["--query-gpu=name,memory.total,memory.used,driver_version", "--format=csv,noheader,nounits"])
@@ -501,18 +519,26 @@ async fn about_info() -> Value {
         for l in String::from_utf8_lossy(&o.stdout).lines() {
             let f: Vec<&str> = l.split(',').map(str::trim).collect();
             if f.len() >= 4 {
-                gpus.push(json!({"name": f[0], "total_mib": f[1].parse::<u64>().unwrap_or(0), "used_mib": f[2].parse::<u64>().unwrap_or(0), "driver": f[3]}));
+                gpus.push(Gpu {
+                    name: f[0].to_string(),
+                    total_mib: f[1].parse().unwrap_or(0),
+                    used_mib: f[2].parse().unwrap_or(0),
+                    driver: f[3].to_string(),
+                });
             }
         }
     }
-    json!({
-        "version": env!("CARGO_PKG_VERSION"),
-        "settings": sift_core::paths::settings_file().display().to_string(),
-        "exe_dir": std::env::current_exe().ok().and_then(|e| e.parent().map(|d| d.display().to_string())).unwrap_or_default(),
-        "gpus": gpus,
-        "driver_cuda": sift_core::engine::driver_cuda().map(|(a, b)| format!("{a}.{b}")),
-        "cpu_threads": std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1),
-    })
+    AboutInfo {
+        version: env!("CARGO_PKG_VERSION").to_string(),
+        settings: sift_core::paths::settings_file().display().to_string(),
+        exe_dir: std::env::current_exe()
+            .ok()
+            .and_then(|e| e.parent().map(|d| d.display().to_string()))
+            .unwrap_or_default(),
+        gpus,
+        driver_cuda: sift_core::engine::driver_cuda().map(|(a, b)| format!("{a}.{b}")),
+        cpu_threads: std::thread::available_parallelism().map(|n| n.get()).unwrap_or(1),
+    }
 }
 
 /// The footer's meters (ZER0's `system_monitor.rs`): one thread for the app's lifetime, a sample
@@ -527,7 +553,7 @@ fn start_meters(app: AppHandle) {
                 .get_webview_window("main")
                 .is_some_and(|w| w.is_visible().unwrap_or(false) && !w.is_minimized().unwrap_or(false));
             if shown {
-                emit(&app, "meters", json!(sampler.sample()));
+                let _ = MetersUpdate(sampler.sample()).emit(&app);
                 std::thread::sleep(std::time::Duration::from_secs(1));
             } else {
                 sampler.refresh_cpu();
@@ -538,6 +564,68 @@ fn start_meters(app: AppHandle) {
     if let Err(e) = std::thread::Builder::new().name("meters".into()).spawn(run) {
         eprintln!("meters: {e}");
     }
+}
+
+// ---- the typed bindings ------------------------------------------------------------------
+
+/// The page code's view of the commands and events (`app/src/lib/bindings.ts`).
+#[cfg(any(debug_assertions, test))]
+const BINDINGS: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../src/lib/bindings.ts");
+
+/// Every command and event the window uses, for the invoke handler and the bindings alike.
+fn ipc_builder() -> tauri_specta::Builder<tauri::DynRuntime> {
+    tauri_specta::Builder::<tauri::DynRuntime>::new()
+        // byte counts (a model is 5 GB) and counters: far below 2^53, exact as numbers
+        .dangerously_cast_bigints_to_number()
+        // `mockCommands`, typed against the commands: the browser preview (lib/mock.ts)
+        .mocks()
+        .commands(tauri_specta::collect_commands![
+            start_convert,
+            cancel_convert,
+            settings_get,
+            settings_save,
+            pick_folder,
+            pick_pdf,
+            input_info,
+            md_preview,
+            server_commands,
+            server_log,
+            set_folder,
+            open_path,
+            reveal_path,
+            open_url,
+            overview,
+            engine_status,
+            engine_check,
+            engine_install,
+            engine_action,
+            model_download,
+            model_verify,
+            model_delete,
+            models_check,
+            about_info,
+        ])
+        .events(tauri_specta::collect_events![
+            ConvertEvent,
+            ConvertDone,
+            MetersUpdate,
+            EngineLog,
+            EngineProgress,
+            EngineDone,
+            EngineChecked,
+            ModelProgress,
+            ModelDone,
+        ])
+}
+
+/// The bindings as `builder` writes them.
+#[cfg(any(debug_assertions, test))]
+fn render_bindings(builder: &tauri_specta::Builder<tauri::DynRuntime>) -> Result<String, String> {
+    let tmp = std::env::temp_dir().join(format!("sift-bindings-{}.ts", std::process::id()));
+    builder.export(specta_typescript::Typescript::default(), &tmp).map_err(|e| e.to_string())?;
+    let text = std::fs::read_to_string(&tmp).map_err(|e| e.to_string());
+    let _ = std::fs::remove_file(&tmp);
+    text
 }
 
 // A release build is a window program (no console of its own), so its command-line mode borrows
@@ -566,10 +654,27 @@ fn main() {
         }
     }
     sift_core::layout::init_threads();
+    let ipc = ipc_builder();
+    // development: the page code always sees the commands as they are (an unchanged file is not
+    // rewritten, so Vite does not reload)
+    #[cfg(debug_assertions)]
+    match render_bindings(&ipc) {
+        Ok(fresh) if std::fs::read_to_string(BINDINGS).ok().as_deref() != Some(fresh.as_str()) => {
+            if let Err(e) = std::fs::write(BINDINGS, fresh) {
+                eprintln!("bindings: {e}");
+            }
+        }
+        Ok(_) => {}
+        Err(e) => panic!("the typed bindings cannot be written: {e}"),
+    }
+    let handler = ipc.invoke_handler();
     tauri::Builder::default()
         .runtime(tauri_runtime_wry::Wry::default())
         .plugin(tauri_plugin_dialog::init())
-        .setup(|app| {
+        .invoke_handler(handler)
+        .setup(move |app| {
+            // before any event: a typed event finds its name through what is mounted here
+            ipc.mount_events(app);
             // the start-up check only when the user turned it on (asked in onboarding)
             if Config::load_saved()
                 .map(|c| c.engine.check_at_startup && !c.folders.engine_dir.is_empty())
@@ -579,40 +684,34 @@ fn main() {
                 std::thread::spawn(move || {
                     let backend = Config::load_saved().map(|c| c.engine.backend).unwrap_or_default();
                     if let Ok(c) = sift_core::engine::check(&backend) {
-                        emit(&h, "engine-check", json!(c));
+                        let _ = EngineChecked(c).emit(&h);
                     }
                 });
             }
             start_meters(app.handle().clone());
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![
-            start_convert,
-            cancel_convert,
-            settings_get,
-            settings_save,
-            pick_folder,
-            pick_pdf,
-            input_info,
-            md_preview,
-            server_commands,
-            server_log,
-            set_folder,
-            open_path,
-            reveal_path,
-            open_url,
-            overview,
-            engine_status,
-            engine_check,
-            engine_install,
-            engine_action,
-            models_status,
-            model_download,
-            model_verify,
-            model_delete,
-            models_check,
-            about_info
-        ])
         .run(tauri::generate_context!())
         .expect("error while running Sift");
+}
+
+#[cfg(test)]
+mod tests {
+    /// `app/src/lib/bindings.ts` is what the commands and events generate. After changing one,
+    /// start the window once in a debug build (`bun run tauri dev`), or run this test with
+    /// `SIFT_WRITE_BINDINGS=1`.
+    #[test]
+    fn bindings_are_current() {
+        let fresh = super::render_bindings(&super::ipc_builder()).expect("export");
+        if std::env::var_os("SIFT_WRITE_BINDINGS").is_some() {
+            std::fs::write(super::BINDINGS, &fresh).expect("write bindings.ts");
+            return;
+        }
+        let committed = std::fs::read_to_string(super::BINDINGS).unwrap_or_default();
+        assert!(
+            committed == fresh,
+            "app/src/lib/bindings.ts is out of date: start the window once in a debug build, or run \
+             `SIFT_WRITE_BINDINGS=1 cargo test -p sift-app bindings_are_current`"
+        );
+    }
 }

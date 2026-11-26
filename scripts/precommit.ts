@@ -3,7 +3,8 @@
  * AGENTS.md's routine in one command, stopping at the first failure.
  *
  *   bun scripts/precommit.ts          format, lint (warnings fail), unit tests, the window's
- *                                     type check and production build, workflow files parse
+ *                                     typed bindings (app/src/lib/bindings.ts matches the Rust
+ *                                     commands), type check and production build, workflow files
  *   bun scripts/precommit.ts --full   the same, then the release build and the golden test
  *   (from app/: bun run precommit, bun run precommit:full)
  *
@@ -47,6 +48,8 @@ const steps: Step[] = [
   { label: "cargo fmt --check", run: sh("cargo", ["fmt", "--check"]) },
   { label: "clippy (warnings fail)", run: sh("cargo", ["clippy", "--workspace", "--all-targets", "--", "-D", "warnings"]) },
   { label: "unit tests", run: sh("cargo", ["test", "-p", "sift-core", "--lib"]) },
+  // before the type check: a stale file would otherwise surface as type errors in the pages
+  { label: "window: bindings current", run: sh("cargo", ["test", "-p", "sift-app", "--bin", "sift-app", "bindings_are_current"]) },
   { label: "window: type check", run: sh("bun", ["x", "tsc", "-b"], APP) },
   { label: "window: production build", run: sh("bun", ["x", "vite", "build"], APP) },
   { label: "workflows parse", run: workflowsParse },

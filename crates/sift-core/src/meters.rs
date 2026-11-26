@@ -6,6 +6,7 @@
 use serde::Serialize;
 
 #[derive(Clone, Debug, Default, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type), serde(rename = "Meters"))]
 pub struct Sample {
     /// all cores, percent, since the previous sample (`None` on the first)
     pub cpu: Option<f32>,

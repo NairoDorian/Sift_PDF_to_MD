@@ -3,6 +3,12 @@
 `sift convert <input> --json` prints one JSON object per line on **stdout**; the window gets the
 same events (`sift-event`). Everything else goes to stderr.
 
+In the window, `sift-event` carries these objects as they are (`ConvertEvent` in
+`app/src-tauri/src/ipc.rs`; their shape is `SiftEvent` in `app/src/lib/api.ts`). The window's
+other events (`sift-done`, `meters`, `engine-log`, `engine-progress`, `engine-done`,
+`engine-check`, `model-progress`, `model-done`) are Rust types in `ipc.rs`, generated into
+`app/src/lib/bindings.ts` with the commands.
+
 Every event has:
 
 | Field | Type | Meaning |

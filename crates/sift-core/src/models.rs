@@ -43,6 +43,7 @@ pub struct Entry {
 
 /// What `status` found on disk.
 #[derive(Debug, Clone, Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type), serde(rename = "ModelStatus"))]
 pub struct Status {
     pub id: String,
     pub name: String,

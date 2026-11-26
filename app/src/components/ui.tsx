@@ -1,6 +1,6 @@
 import type { JSX } from "@solidjs/web";
 import { createSignal, For, Show } from "solid-js";
-import { call } from "../lib/api";
+import { commands } from "../lib/api";
 import { openPath, overview, pickFolder, refresh } from "../lib/store";
 import { Icon } from "./Icon";
 
@@ -150,7 +150,7 @@ export function FolderSetting(props: { kind: "engine" | "models"; title: string;
   const apply = async (path: string, moveFiles: boolean) => {
     setPending(null);
     try {
-      const r = await call<{ moved: string[]; old: string }>("set_folder", { kind: props.kind, path, moveFiles });
+      const r = await commands.setFolder(props.kind, path, moveFiles);
       setMessage(r.moved.length ? `Moved ${r.moved.length} item(s) from ${r.old}; the old folder was kept.` : "");
     } catch (err) {
       setMessage(String(err));

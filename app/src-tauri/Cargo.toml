@@ -14,12 +14,18 @@ path = "src/main.rs"
 tauri-build = { version = "3.0.0-alpha.4", features = [] }
 
 [dependencies]
-sift-core = { path = "../../crates/sift-core" }
+sift-core = { path = "../../crates/sift-core", features = ["specta"] }
 sift-cli = { path = "../../crates/sift-cli" }
 tauri = { version = "3.0.0-alpha.6", features = [] }
 tauri-runtime-wry = "3.0.0-alpha.6"
 # folder pickers (engine and models folders); Tauri's own plugins-workspace, v3 branch (as ZER0)
 tauri-plugin-dialog = { git = "https://github.com/tauri-apps/plugins-workspace", branch = "v3" }
+# typed commands and events: app/src/lib/bindings.ts is generated from main.rs and ipc.rs.
+# tauri-specta publishes for Tauri 2 only; this is the maintainer's Tauri 3 fork, upstream
+# `main` plus the `#[specta::specta]` collector (docs/DEPENDENCIES.md), as in ZER0.
+tauri-specta = { git = "https://github.com/NairoDorian/tauri-specta-v3", branch = "main", default-features = false, features = ["derive", "typescript"] }
+specta.workspace = true
+specta-typescript = "0.0.15"
 serde.workspace = true
 serde_json.workspace = true
 anyhow.workspace = true

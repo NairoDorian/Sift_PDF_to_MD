@@ -24,6 +24,7 @@ base64.workspace = true
 candle-core.workspace = true
 candle-nn.workspace = true
 log.workspace = true
+specta = { workspace = true, optional = true }
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_System_JobObjects", "Win32_System_Threading", "Win32_Security"] }
@@ -32,3 +33,7 @@ windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Syste
 # Layout model on the GPU through candle's CUDA backend (needs the CUDA toolkit to build).
 # The default build runs layout on the CPU and needs no toolkit.
 cuda = ["candle-core/cuda", "candle-nn/cuda"]
+# `specta::Type` on what the window receives (the settings, model and engine status, the
+# meters), so its TypeScript types are generated (app/src/lib/bindings.ts). Only the window
+# turns it on: `sift.exe` is built without it.
+specta = ["dep:specta"]

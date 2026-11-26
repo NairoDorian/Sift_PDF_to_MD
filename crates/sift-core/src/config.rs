@@ -9,6 +9,7 @@ use anyhow::{Context, Result, anyhow};
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(default)]
 pub struct Convert {
     pub mode: String,
@@ -34,6 +35,7 @@ impl Default for Convert {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(default)]
 pub struct Surya {
     pub model: String,
@@ -47,6 +49,7 @@ impl Default for Surya {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(default)]
 pub struct Gemma {
     pub model: String,
@@ -96,6 +99,7 @@ impl Default for Gemma {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(default)]
 pub struct Llm {
     pub enabled: bool,
@@ -112,6 +116,7 @@ impl Default for Llm {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(default)]
 pub struct Describe {
     pub figure_ocr: bool,
@@ -123,6 +128,7 @@ impl Default for Describe {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(default)]
 pub struct Scheduler {
     /// sequential (surya first, then Gemma) | together (V0 [budget] models)
@@ -140,6 +146,7 @@ impl Default for Scheduler {
 /// Where the engine and the models live: chosen by the user, empty until then (VD7). Nothing is
 /// ever downloaded into a default folder.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(default)]
 pub struct Folders {
     pub engine_dir: String,
@@ -148,6 +155,7 @@ pub struct Folders {
 
 /// The llama.cpp engine (MASTER_PLAN section 6).
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type))]
 #[serde(default)]
 pub struct EngineSettings {
     /// cuda-13.5 | vulkan | cpu | auto (detected)
@@ -164,6 +172,7 @@ impl Default for EngineSettings {
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type), serde(rename = "Settings"))]
 #[serde(default)]
 pub struct Config {
     pub folders: Folders,

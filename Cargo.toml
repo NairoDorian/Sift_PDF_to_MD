@@ -29,6 +29,9 @@ base64 = "0.23.1"
 candle-core = "0.11.1"
 candle-nn = "0.11.1"
 log = "0.4.35"
+# The window's typed commands (app/src/lib/bindings.ts, generated): exactly the Specta that
+# tauri-specta's Tauri 3 fork builds against (docs/DEPENDENCIES.md).
+specta = { version = "=2.0.0-rc.28", features = ["derive", "serde_json"] }
 
 [profile.release]
 debug = 1

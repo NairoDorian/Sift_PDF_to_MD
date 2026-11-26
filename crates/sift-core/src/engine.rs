@@ -492,6 +492,7 @@ pub fn wanted_backend(setting: &str) -> String {
 
 /// What a check found (no download).
 #[derive(Debug, Clone, serde::Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type), serde(rename = "EngineCheck"))]
 pub struct Check {
     pub active: Option<String>,
     /// newest official build with a Windows asset for the chosen backend
@@ -534,6 +535,7 @@ pub fn check(backend: &str) -> Result<Check> {
 
 /// One installed build in the engine folder.
 #[derive(Debug, Clone, serde::Serialize)]
+#[cfg_attr(feature = "specta", derive(specta::Type), serde(rename = "Build"))]
 pub struct Installed {
     pub name: String,
     pub dir: PathBuf,

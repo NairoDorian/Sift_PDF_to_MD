@@ -1,18 +1,23 @@
 import { createSignal } from "solid-js";
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import {
-  call,
+  commands,
+  events,
   inTauri,
-  on,
-  type DoneEvent,
+  type ConvertDone,
+  type EngineAction,
   type EngineCheck,
+  type EngineDone,
   type Meters,
   type EngineStatus,
   type InputInfo,
+  type ModelDone,
   type ModelProgress,
   type ModelStatus,
   type Overview,
   type Section,
+  type ServerCommand,
+  type ServerLog,
   type Settings,
   type SiftEvent,
 } from "./api";
@@ -45,11 +50,7 @@ export const ready = () => setupSteps().every(Boolean);
 
 export async function refresh(): Promise<void> {
   try {
-    const [o, e, s] = await Promise.all([
-      call<Overview>("overview"),
-      call<EngineStatus>("engine_status"),
-      call<Settings>("settings_get"),
-    ]);
+    const [o, e, s] = await Promise.all([commands.overview(), commands.engineStatus(), commands.settingsGet()]);
     setOverview(o);
     setEngine(e);
     setSettings(s);
@@ -66,7 +67,7 @@ export async function saveSetting<S extends Section, K extends keyof Settings[S]
   const next = { ...cur, [section]: { ...cur[section], [key]: value } } as Settings;
   setSettings(next);
   try {
-    await call("settings_save", { settings: next });
+    await commands.settingsSave(next);
   } catch (err) {
     log("error", "settings", `${String(section)}.${String(key)}: ${err}`);
   }
@@ -100,22 +101,21 @@ export const [meters, setMeters] = createSignal<Meters | null>(null);
 /** The output folder of this session's latest job: where its servers' logs are (`.sift\logs`). */
 export const [lastOutput, setLastOutput] = createSignal<string | null>(null);
 
-export type ServerCommand = { model: string; args: string[] };
 /** How Sift would start each model server now (read-only; nothing is started), or why it can't
  * say (no engine, no models). Refreshed with the rest by `refresh()`: a local call, no network. */
 export const [serverLines, setServerLines] = createSignal<{ list: ServerCommand[]; error: string }>({ list: [], error: "" });
 async function loadServerLines() {
   try {
-    setServerLines({ list: await call<ServerCommand[]>("server_commands"), error: "" });
+    setServerLines({ list: await commands.serverCommands(), error: "" });
   } catch (err) {
     setServerLines({ list: [], error: String(err) });
   }
 }
 /** The end of a server's newest log in the latest job's output folder. */
-export async function serverLog(model: string): Promise<{ file: string | null; lines: string[] } | null> {
+export async function serverLog(model: string): Promise<ServerLog | null> {
   const out = lastOutput();
   if (!out) return null;
-  return call("server_log", { model, output: out });
+  return commands.serverLog(model, out);
 }
 
 // ---- the conversion --------------------------------------------------------------------------
@@ -133,7 +133,7 @@ export async function chooseInput(path: string) {
   setInputError("");
   if (!path) return;
   try {
-    setInputInfo(await call<InputInfo>("input_info", { path }));
+    setInputInfo(await commands.inputInfo(path));
   } catch (err) {
     setInputError(String(err));
   }
@@ -229,7 +229,7 @@ export async function startConvert(): Promise<void> {
     skipped: 0,
     fileIndex: 0,
     file: info?.kind === "pdf" ? path : "",
-    pages: info?.pages ?? 0,
+    pages: info?.kind === "pdf" ? (info.pages ?? 0) : 0,
     stages: {},
     stage: "",
     progress: 0,
@@ -239,20 +239,18 @@ export async function startConvert(): Promise<void> {
   });
   log("info", "convert", `Converting ${path}`);
   try {
-    await call("start_convert", {
-      req: {
-        input: path,
-        output: ro.output || null,
-        pages: ro.pages.trim() || null,
-        recursive: ro.recursive,
-        force: ro.force,
-        describer: describe ? "gemma" : "off",
-        llm: s.llm.enabled,
-        mode: s.convert.mode,
-        tables: s.convert.tables,
-        keep_headers: s.convert.keep_headers,
-        image_dpi: s.convert.image_dpi,
-      },
+    await commands.startConvert({
+      input: path,
+      output: ro.output || null,
+      pages: ro.pages.trim() || null,
+      recursive: ro.recursive,
+      force: ro.force,
+      describer: describe ? "gemma" : "off",
+      llm: s.llm.enabled,
+      mode: s.convert.mode,
+      tables: s.convert.tables,
+      keep_headers: s.convert.keep_headers,
+      image_dpi: s.convert.image_dpi,
     });
   } catch (err) {
     patchJob((j) => ({ ...j, state: "failed", error: String(err), ended: Date.now() }));
@@ -261,7 +259,7 @@ export async function startConvert(): Promise<void> {
 }
 
 export async function cancelConvert(): Promise<void> {
-  if (await call<boolean>("cancel_convert")) {
+  if (await commands.cancelConvert()) {
     patchJob((j) => ({ ...j, cancelling: true }));
     log("warn", "convert", "Cancelling: queued work stops, then the model servers.");
   }
@@ -273,7 +271,7 @@ export function clearJob() {
 
 async function loadPreview(md: string) {
   try {
-    const text = await call<string>("md_preview", { path: md, maxBytes: 6000 });
+    const text = await commands.mdPreview(md, 6000);
     patchJob((j) => ({ ...j, preview: text }));
   } catch {
     /* the result card shows the file without its first lines */
@@ -334,7 +332,7 @@ function onSiftEvent(d: SiftEvent) {
   }
 }
 
-function onSiftDone(e: DoneEvent) {
+function onSiftDone(e: ConvertDone) {
   patchJob((j) => ({
     ...j,
     state: e.cancelled ? "cancelled" : e.ok ? "done" : "failed",
@@ -365,7 +363,7 @@ function engineLine(s: string) {
 export async function checkEngine() {
   setChecking(true);
   try {
-    setCheck(await call<EngineCheck>("engine_check"));
+    setCheck(await commands.engineCheck());
   } catch (err) {
     engineLine(`Check failed: ${err}`);
   }
@@ -376,17 +374,17 @@ export async function installEngine(tag?: string) {
   setEngineBusy(true);
   setEngineLog([]);
   try {
-    await call("engine_install", { tag: tag ?? null });
+    await commands.engineInstall(tag ?? null);
   } catch (err) {
     setEngineBusy(false);
     engineLine(String(err));
   }
 }
 
-export async function engineAction(action: "use" | "rollback" | "remove" | "remove_runtime", build?: string) {
+export async function engineAction(action: EngineAction, build?: string) {
   setEngineBusy(true);
   try {
-    await call("engine_action", { action, build: build ?? null });
+    await commands.engineAction(action, build ?? null);
   } catch (err) {
     setEngineBusy(false);
     engineLine(String(err));
@@ -403,7 +401,7 @@ export async function downloadModel(id: string) {
   const ids = id === "all" ? models().filter((m) => !m.installed).map((m) => m.id) : [id];
   for (const m of ids) note(m, "waiting for the download to start");
   try {
-    await call("model_download", { id });
+    await commands.modelDownload(id);
   } catch (err) {
     for (const m of ids) note(m, String(err), "error");
   }
@@ -412,7 +410,7 @@ export async function downloadModel(id: string) {
 export async function verifyModel(id: string) {
   note(id, "checking every file's sha256...");
   try {
-    const r = await call<{ file: string; ok: boolean }[]>("model_verify", { id });
+    const r = await commands.modelVerify(id);
     const bad = r.filter((x) => !x.ok).map((x) => x.file);
     note(id, bad.length ? `missing or damaged: ${bad.join(", ")}` : "every file verified (sha256)", bad.length ? "error" : "ok");
   } catch (err) {
@@ -422,7 +420,7 @@ export async function verifyModel(id: string) {
 
 export async function deleteModel(id: string) {
   try {
-    await call("model_delete", { id });
+    await commands.modelDelete(id);
     note(id, "deleted");
   } catch (err) {
     note(id, String(err), "error");
@@ -435,7 +433,7 @@ export const [checkingRevisions, setCheckingRevisions] = createSignal(false);
 export async function checkRevisions() {
   setCheckingRevisions(true);
   try {
-    const r = await call<{ id: string; pinned: string; upstream: string | null }[]>("models_check");
+    const r = await commands.modelsCheck();
     setRevisions(
       Object.fromEntries(
         r.map((x) => [
@@ -453,19 +451,19 @@ export async function checkRevisions() {
 // ---- folders, files ----------------------------------------------------------------------------
 
 export async function pickFolder(title: string): Promise<string | null> {
-  return call<string | null>("pick_folder", { title });
+  return commands.pickFolder(title);
 }
 export async function pickPdf(): Promise<string | null> {
-  return call<string | null>("pick_pdf");
+  return commands.pickPdf();
 }
 export function openPath(path: string) {
-  call("open_path", { path }).catch((err) => log("error", "open", String(err)));
+  commands.openPath(path).catch((err) => log("error", "open", String(err)));
 }
 export function revealPath(path: string) {
-  call("reveal_path", { path }).catch((err) => log("error", "open", String(err)));
+  commands.revealPath(path).catch((err) => log("error", "open", String(err)));
 }
 export function openUrl(url: string) {
-  call("open_url", { url }).catch((err) => log("error", "open", String(err)));
+  commands.openUrl(url).catch((err) => log("error", "open", String(err)));
 }
 
 // ---- appearance ----------------------------------------------------------------------------------
@@ -525,31 +523,37 @@ export const toggleSidebar = () => setSidebarCollapsed(!collapsed());
 
 // ---- start-up --------------------------------------------------------------------------------------
 
-export function start() {
-  on<SiftEvent>("sift-event", onSiftEvent);
-  on<DoneEvent>("sift-done", onSiftDone);
-  on<Meters>("meters", setMeters);
-  on<{ message: string }>("engine-log", (e) => engineLine(e.message));
-  on<{ done: number; total: number }>("engine-progress", (e) => setDownload(e));
-  on<{ ok: boolean; error?: string; message?: string }>("engine-done", (e) => {
-    setEngineBusy(false);
-    setDownload(null);
-    engineLine(e.ok ? e.message ?? "The engine is ready." : `Engine not changed: ${e.error}`);
-    void refresh();
+function onEngineDone(e: EngineDone) {
+  setEngineBusy(false);
+  setDownload(null);
+  engineLine(e.ok ? (e.message ?? "The engine is ready.") : `Engine not changed: ${e.error}`);
+  void refresh();
+}
+
+function onModelDone(e: ModelDone) {
+  setModelProgress((m) => {
+    const { [e.id]: _gone, ...rest } = m;
+    return rest;
   });
-  on<EngineCheck>("engine-check", (c) => setCheck(c));
-  on<ModelProgress>("model-progress", (p) => {
-    setModelProgress((m) => ({ ...m, [p.id]: p }));
-  });
-  on<{ id: string; ok: boolean; error?: string }>("model-done", (e) => {
-    setModelProgress((m) => {
-      const { [e.id]: _gone, ...rest } = m;
-      return rest;
-    });
-    note(e.id, e.ok ? "downloaded and verified" : `download failed: ${e.error}`, e.ok ? "ok" : "error");
-    log(e.ok ? "ok" : "error", "models", `${e.id}: ${e.ok ? "ready" : e.error}`);
-    void refresh();
-  });
+  note(e.id, e.ok ? "downloaded and verified" : `download failed: ${e.error}`, e.ok ? "ok" : "error");
+  log(e.ok ? "ok" : "error", "models", `${e.id}: ${e.ok ? "ready" : e.error}`);
+  void refresh();
+}
+
+/** Listen to every event, then load the state. In the browser preview the mock answers the
+ * commands and sends the events (Tauri's IPC mock), so it is installed before anything calls. */
+export async function start(): Promise<void> {
+  if (import.meta.env.DEV && !inTauri) (await import("./mock")).installMocks();
+  // `sift-event` is JSON on the Rust side; its documented shape is SiftEvent (docs/events.md)
+  void events.siftEvent.listen((e) => onSiftEvent(e.payload as SiftEvent));
+  void events.siftDone.listen((e) => onSiftDone(e.payload));
+  void events.meters.listen((e) => setMeters(e.payload));
+  void events.engineLog.listen((e) => engineLine(e.payload.message));
+  void events.engineProgress.listen((e) => setDownload(e.payload));
+  void events.engineDone.listen((e) => onEngineDone(e.payload));
+  void events.engineCheck.listen((e) => setCheck(e.payload));
+  void events.modelProgress.listen((e) => setModelProgress((m) => ({ ...m, [e.payload.id]: e.payload })));
+  void events.modelDone.listen((e) => onModelDone(e.payload));
 
   // a PDF or a folder dropped anywhere on the window goes to the Convert page
   if (inTauri) {

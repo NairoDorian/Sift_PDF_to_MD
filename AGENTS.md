@@ -47,12 +47,13 @@ The routine is what you run before a commit; it is not optional and has no short
 
 ```bash
 bun scripts/update-deps.ts      # 1. every dependency to its newest version (prereleases incl., Tauri 3 and
-                                #    Solid 2 included), then cargo update -> check -> unit tests -> bun install ->
-                                #    tsc -> vite build -> release build -> golden test (--quick skips the last two)
+                                #    Solid 2 included), then cargo update -> check -> unit tests -> bun update ->
+                                #    typed bindings -> tsc -> vite build -> release build -> golden test (--quick
+                                #    skips the last two)
 bun scripts/precommit.ts --full # 2-4 in one command, stopping at the first failure: cargo fmt --check, clippy
-                                #    (warnings fail), unit tests, tsc, vite build, the workflow files parse, then
-                                #    the release build and the golden test (14/14 identical); without --full, the
-                                #    quick part only (about 40 s)
+                                #    (warnings fail), unit tests, the typed bindings are current, tsc, vite build,
+                                #    the workflow files parse, then the release build and the golden test (14/14
+                                #    identical); without --full, the quick part only
 cd app && bun run tauri dev     # 5. after a window change: open it and walk the pages you touched
 git commit                      # 6. only when the user asks; the hook runs the quick gate on the working tree
 ```
@@ -138,10 +139,12 @@ Sift_PDF_to_MD/
   crates/sift-core/     everything that converts (module map below)
   crates/sift-cli/      the `sift` command line (also run by the app binary when given a subcommand)
   app/                  Tauri 3 + SolidJS 2 window: Setup (first run), Convert, Engine, Models, Settings, Logs, About
-    src/lib/            api.ts (typed commands), store.ts (shared state, events), brand.ts (the mark), mock.ts (dev preview)
+    src/lib/            bindings.ts (generated: the typed commands and events), api.ts (their plain names),
+                        store.ts (shared state, events), brand.ts (the mark), mock.ts (dev preview, typed handlers)
     src/components/     ui.tsx (ZER0's groups, rows, switches), SiftFlow.tsx (the sieve), Icon, Brand, Sidebar, Footer
     src/pages/          one file per page
-    src-tauri/          main.rs (commands), tauri.conf.json, tauri.release.conf.json (installer resources), icons/
+    src-tauri/          main.rs (commands), ipc.rs (their types, the events), tauri.conf.json,
+                        tauri.release.conf.json (installer resources), icons/
   .github/workflows/    release.yml: manual, builds the installer into a draft release
   catalog/              surya-2.5.toml, surya-layout.toml, gemma-4-e4b-qat.toml: pinned files + sha256
   prompts/              surya-2.5/ (surya's own, word for word), describe/ (figure prompts)
@@ -216,6 +219,18 @@ Sift_PDF_to_MD/
   here (nvcc compiles candle's kernels; at low priority on a busy machine).
 - Tauri 3 is alpha: the Tauri crates, `@tauri-apps/*` and `tauri-plugin-dialog` (plugins-workspace
   `v3` branch) must agree; update them together with `scripts/update-deps.ts`, never one by hand.
+- **The window's commands and events are typed** by tauri-specta: `app/src/lib/bindings.ts` is
+  generated from `main.rs` and `ipc.rs`, never edited. A new or changed command needs
+  `#[specta::specta]` under `#[tauri::command]` and a place in `ipc_builder()`; then start the
+  window once in a debug build (it rewrites the file when it changed) or run
+  `SIFT_WRITE_BINDINGS=1 cargo test -p sift-app bindings_are_current`; the gate fails on a stale
+  file. tauri-specta publishes for Tauri 2 only: Sift uses the maintainer's Tauri 3 fork
+  (`NairoDorian/tauri-specta-v3`, working copy `PROJECTS\tauri-specta-v3`, as ZER0), with the
+  exact Specta it builds against. A sift-core type the window receives derives `specta::Type`
+  behind sift-core's `specta` feature; its TypeScript name comes from a container
+  `#[serde(rename)]` (Specta rc.28 refuses `#[specta(rename)]` there; JSON and TOML never write a
+  struct's name). Types that differ between what Rust sends and accepts come in two shapes,
+  `X_Serialize` and `X_Deserialize`; `api.ts` gives the received ones their plain names.
 - Solid 2 batches writes: a signal read right after its setter, in the same frame, still returns
   the old value. Compute from locals (lib/store.ts does).
 - WebView2 follows Windows' "Animation effects": with them off, `prefers-reduced-motion` is
@@ -247,7 +262,10 @@ Sift_PDF_to_MD/
   `createEffect(compute, apply)` form with a returned cleanup; `Dynamic` for components switched
   reactively.
 - Commands never block the window: long work runs on its own Rust thread and reports through
-  events (`docs/events.md`).
+  events (`docs/events.md`). Call them through the generated `commands`, listen through `events`
+  (`lib/api.ts`); never `invoke` a command by its name.
+- A list whose rows are refreshed from Rust is keyed by a stable field (`<For keyed={(m) => m.id}>`):
+  fresh objects otherwise rebuild every row and drop its state (an open confirmation).
 - **One place per setting.** A setting has one control, on the page it belongs to (conversion
   options on Convert, the engine's on Engine, the models folder on Models); other pages link to
   it. The Convert page's options are the saved defaults the command line reads too.

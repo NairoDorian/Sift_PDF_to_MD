@@ -20,8 +20,11 @@
  *   went stable `next` sits at 2.0.0-rc.23 while `latest` moves (2.0.4, 2026-11-25). Following
  *   `next` alone held Sift on the release candidate (ZER0 reads both for the same reason).
  * - MAJOR_LOCKED: the Tauri family stays on major 3 (its newest alpha/beta/rc); a JS API must never
- *   talk to a different Tauri over IPC. Git dependencies (Tauri's plugins-workspace `v3` branch)
- *   follow their branch tip through `cargo update`.
+ *   talk to a different Tauri over IPC. Git dependencies (Tauri's plugins-workspace `v3` branch,
+ *   tauri-specta's Tauri 3 fork) follow their branch tip through `cargo update`.
+ * - MOVES_WITH: `specta` and `specta-typescript` stay at the versions tauri-specta builds against
+ *   (two Spectas are two unrelated sets of types); a newer one is reported, and they move when the
+ *   fork does. The generated bindings are then checked (`bindings_are_current`).
  * - A crate whose new version does not resolve is put back to its previous spec, reported as held
  *   with the conflict, and `cargo update` runs again (ZER0's conflict handling).
  * - Transitive dependencies move too: `cargo update` rewrites the whole Cargo.lock, `bun update`
@@ -51,6 +54,10 @@ const NPM_LINE_PINNED: Record<string, { tags: string[]; major: number; why: stri
 };
 const NPM_MAJOR_LOCKED_PREFIXES = ["@tauri-apps/"];
 const CARGO_MAJOR_LOCKED = new Set<string>(["tauri", "tauri-build", "tauri-runtime-wry", "tauri-runtime", "tauri-utils", "tauri-macros", "tauri-codegen", "tauri-plugin"]);
+const CARGO_MOVES_WITH: Record<string, string> = {
+  specta: "moves with tauri-specta (the Tauri 3 fork builds against exactly this Specta)",
+  "specta-typescript": "moves with tauri-specta (the exporter it implements must be this one)",
+};
 
 type Change = { manifest: string; name: string; from: string; to: string; note?: string };
 type Edit = { file: string; line: number; before: string; name: string };
@@ -131,6 +138,10 @@ async function updateCargoManifest(file: string): Promise<void> {
     const cur = parse(normSpec(spec));
     const nv = newest ? parse(newest) : null;
     if (!nv || !cur) continue;
+    if (CARGO_MOVES_WITH[name]) {
+      if (cmp(nv, cur) > 0) held.push({ manifest: path.relative(ROOT, file), name, from: spec, to: newest!, note: CARGO_MOVES_WITH[name] });
+      continue;
+    }
     if (CARGO_MAJOR_LOCKED.has(name) && nv.major !== cur.major) {
       held.push({ manifest: path.relative(ROOT, file), name, from: spec, to: newest!, note: "major-locked (the Tauri family stays on major 3)" });
       continue;
@@ -301,6 +312,8 @@ const steps: [string, string, string[], string][] = [
 if (hasApp) {
   // `bun update`, not `bun install`: install keeps every locked sub-dependency where it was
   steps.push(["bun update", "bun", ["update"], path.join(ROOT, "app")]);
+  // a new tauri-specta may write the bindings differently: regenerate with SIFT_WRITE_BINDINGS=1
+  steps.push(["bindings current", "cargo", ["test", "-p", "sift-app", "--bin", "sift-app", "bindings_are_current"], ROOT]);
   steps.push(["typecheck", "bun", ["x", "tsc", "-b"], path.join(ROOT, "app")]);
   steps.push(["vite build", "bun", ["x", "vite", "build"], path.join(ROOT, "app")]);
 }

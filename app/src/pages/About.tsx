@@ -3,7 +3,7 @@ import { createSignal, For, onSettled, Show } from "solid-js";
 import { BrandMark } from "../components/Brand";
 import { Icon } from "../components/Icon";
 import { Group, PageHead, Setting } from "../components/ui";
-import { call, type AboutInfo } from "../lib/api";
+import { commands, type AboutInfo } from "../lib/api";
 import { engine, openUrl } from "../lib/store";
 
 const REPO = "https://github.com/NairoDorian/Sift_PDF_to_MD";
@@ -21,7 +21,7 @@ const CREDITS: [string, string, string][] = [
 export default function About(): JSX.Element {
   const [info, setInfo] = createSignal<AboutInfo | null>(null);
   onSettled(() => {
-    call<AboutInfo>("about_info").then(setInfo, () => setInfo(null));
+    commands.aboutInfo().then(setInfo, () => setInfo(null));
   });
   return (
     <div class="page">

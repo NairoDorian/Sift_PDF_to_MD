@@ -2,6 +2,7 @@ import type { JSX } from "@solidjs/web";
 import { createEffect, createSignal, For, Show } from "solid-js";
 import { Icon } from "../components/Icon";
 import { Callout, ConfirmButton, FolderSetting, Group, PageHead, Progress, ServerDot, Setting, Toggle } from "../components/ui";
+import type { ServerCommand } from "../lib/api";
 import { mb } from "../lib/format";
 import {
   check,
@@ -20,7 +21,6 @@ import {
   serverLog,
   servers,
   settings,
-  type ServerCommand,
 } from "../lib/store";
 
 /* The llama.cpp engine (ZER0's LlamaSettings page): official ggml-org builds only. GitHub's
