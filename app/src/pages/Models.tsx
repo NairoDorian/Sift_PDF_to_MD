@@ -49,29 +49,29 @@ export default function Models(): JSX.Element {
           </div>
         </div>
         <div class="cards">
-          <For each={models()}>
+          <For each={models()} keyed={(m) => m.id}>
             {(m) => {
-              const p = () => modelProgress()[m.id];
-              const n = () => modelNote()[m.id];
+              const p = () => modelProgress()[m().id];
+              const n = () => modelNote()[m().id];
               return (
                 <div class="box model-card">
                   <div class="top">
                     <div class="what">
-                      <div class="name">{m.name}</div>
-                      <div class="small muted">{m.role}</div>
+                      <div class="name">{m().name}</div>
+                      <div class="small muted">{m().role}</div>
                     </div>
-                    <Show when={p()} fallback={<span class={["badge", m.installed ? "ok" : "warn"]}>{m.installed ? "installed" : "missing"}</span>}>
+                    <Show when={p()} fallback={<span class={["badge", m().installed ? "ok" : "warn"]}>{m().installed ? "installed" : "missing"}</span>}>
                       <span class="badge accent">downloading</span>
                     </Show>
                   </div>
                   <div class="facts">
                     <span>
-                      size <b>{gb(m.size)}</b>
+                      size <b>{gb(m().size)}</b>
                     </span>
                     <span>
-                      revision <b>{m.revision.slice(0, 8)}</b>
+                      revision <b>{m().revision.slice(0, 8)}</b>
                     </span>
-                    <span>{m.license}</span>
+                    <span>{m().license}</span>
                   </div>
                   <Show when={p()}>
                     {(x) => (
@@ -85,27 +85,27 @@ export default function Models(): JSX.Element {
                   </Show>
                   <div class="row">
                     <Show
-                      when={m.installed}
+                      when={m().installed}
                       fallback={
-                        <button class="btn sm primary" disabled={!overview()?.models_dir || !!p()} onClick={() => void downloadModel(m.id)}>
+                        <button class="btn sm primary" disabled={!overview()?.models_dir || !!p()} onClick={() => void downloadModel(m().id)}>
                           <Icon name="download" size={13} /> Download
                         </button>
                       }
                     >
-                      <button class="btn sm" onClick={() => void verifyModel(m.id)}>
+                      <button class="btn sm" onClick={() => void verifyModel(m().id)}>
                         <Icon name="verify" size={13} /> Verify
                       </button>
-                      <ConfirmButton label="Delete" confirm={`Delete ${gb(m.size)}?`} onConfirm={() => void deleteModel(m.id)} />
+                      <ConfirmButton label="Delete" confirm={`Delete ${gb(m().size)}?`} onConfirm={() => void deleteModel(m().id)} />
                     </Show>
                   </div>
-                  <Show when={n() || revisions()[m.id] || (!m.installed && m.missing.length)}>
+                  <Show when={n() || revisions()[m().id] || (!m().installed && m().missing.length)}>
                     <div class="small">
                       <Show when={n()}>{(x) => <div class={x().level === "error" ? "error-text" : x().level === "ok" ? "ok-text" : "muted"}>{x().text}</div>}</Show>
-                      <Show when={revisions()[m.id]}>
-                        <div class="muted">{revisions()[m.id]}</div>
+                      <Show when={revisions()[m().id]}>
+                        <div class="muted">{revisions()[m().id]}</div>
                       </Show>
-                      <Show when={!m.installed && !n() && m.missing.length}>
-                        <div class="muted">missing: {m.missing.join(", ")}</div>
+                      <Show when={!m().installed && !n() && m().missing.length}>
+                        <div class="muted">missing: {m().missing.join(", ")}</div>
                       </Show>
                     </div>
                   </Show>

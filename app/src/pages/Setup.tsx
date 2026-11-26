@@ -115,17 +115,17 @@ export default function Setup(): JSX.Element {
             </Show>
           </div>
           <div class="stack">
-            <For each={models()}>
+            <For each={models()} keyed={(m) => m.id}>
               {(m) => {
-                const p = () => modelProgress()[m.id];
+                const p = () => modelProgress()[m().id];
                 return (
                   <div class="stack" style={{ gap: "4px" }}>
                     <div class="row small">
-                      <span class={["dot", { ok: m.installed, accent: !!p(), live: !!p() }]} />
-                      <span>{m.name}</span>
+                      <span class={["dot", { ok: m().installed, accent: !!p(), live: !!p() }]} />
+                      <span>{m().name}</span>
                       <span class="spacer" />
                       <span class="muted mono">
-                        {p() ? `${gb(p()!.done)} / ${gb(p()!.total)}` : m.installed ? "ready" : modelNote()[m.id]?.text ?? gb(m.size)}
+                        {p() ? `${gb(p()!.done)} / ${gb(p()!.total)}` : m().installed ? "ready" : modelNote()[m().id]?.text ?? gb(m().size)}
                       </span>
                     </div>
                     <Show when={p()}>{(x) => <Progress value={x().done} max={x().total} />}</Show>

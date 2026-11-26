@@ -269,37 +269,37 @@ export default function Engine(): JSX.Element {
               </tr>
             </thead>
             <tbody>
-              <For each={e()?.builds ?? []}>
+              <For each={e()?.builds ?? []} keyed={(b) => b.name}>
                 {(b) => (
                   <tr>
-                    <td class="mono">{b.name}</td>
-                    <td class="mono">{b.size_mb} MB</td>
+                    <td class="mono">{b().name}</td>
+                    <td class="mono">{b().size_mb} MB</td>
                     <td class="mono">
-                      {b.cuda_runtime_mb ? `${b.cuda_runtime_mb} MB` : "-"}
-                      <Show when={b.cuda_runtime_mb && e()?.toolkit}>
-                        <button class="btn sm ghost" style={{ "margin-left": "6px" }} disabled={engineBusy()} onClick={() => void engineAction("remove_runtime", b.name)}>
+                      {b().cuda_runtime_mb ? `${b().cuda_runtime_mb} MB` : "-"}
+                      <Show when={b().cuda_runtime_mb && e()?.toolkit}>
+                        <button class="btn sm ghost" style={{ "margin-left": "6px" }} disabled={engineBusy()} onClick={() => void engineAction("remove_runtime", b().name)}>
                           Remove
                         </button>
                       </Show>
                     </td>
                     <td>
-                      <Show when={b.active} fallback={<Show when={b.previous}><span class="badge">previous</span></Show>}>
+                      <Show when={b().active} fallback={<Show when={b().previous}><span class="badge">previous</span></Show>}>
                         <span class="badge ok">active</span>
                       </Show>
                     </td>
                     <td class="actions">
-                      <Show when={!b.active}>
-                        <button class="btn sm" disabled={engineBusy()} onClick={() => void engineAction("use", b.name)}>
+                      <Show when={!b().active}>
+                        <button class="btn sm" disabled={engineBusy()} onClick={() => void engineAction("use", b().name)}>
                           Use
                         </button>
                       </Show>
-                      <Show when={b.previous}>
+                      <Show when={b().previous}>
                         <button class="btn sm" disabled={engineBusy()} onClick={() => void engineAction("rollback")}>
                           Roll back
                         </button>
                       </Show>
-                      <Show when={!b.active && !b.previous}>
-                        <ConfirmButton label="Delete" confirm="Delete this build?" disabled={engineBusy()} onConfirm={() => void engineAction("remove", b.name)} />
+                      <Show when={!b().active && !b().previous}>
+                        <ConfirmButton label="Delete" confirm="Delete this build?" disabled={engineBusy()} onConfirm={() => void engineAction("remove", b().name)} />
                       </Show>
                     </td>
                   </tr>

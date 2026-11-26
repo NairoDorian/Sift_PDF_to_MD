@@ -262,7 +262,7 @@ function MarkdownCard(): JSX.Element {
         <div class="meta">
           <div class="name ellipsis">
             <Show when={single()} fallback={inputInfo()?.kind === "folder" ? "One Markdown file per PDF" : inputInfo() ? `${stem(inputInfo()!.name)}.md` : "Markdown"}>
-              {(r) => fileName(r().md ?? "")}
+              {(r) => <>{fileName(r().md ?? "")}</>}
             </Show>
           </div>
           <div class="path ellipsis" title={outputPlace()}>
@@ -270,7 +270,7 @@ function MarkdownCard(): JSX.Element {
           </div>
           <div class="small muted">
             <Show when={j()?.state === "done" && j()} fallback={`with its images at ${settings()?.convert.image_dpi ?? 300} DPI${settings()?.convert.describer !== "off" ? ", their descriptions" : ""} and a report of anything Sift could not verify`}>
-              {(d) => `Done in ${clock((d().ended ?? d().started) - d().started)}${d().results.length > 1 ? ` · ${plural(d().results.filter((r) => !r.error).length, "file")} converted` : ""}${d().skipped ? ` · ${d().skipped} already up to date` : ""}`}
+              {(d) => <>{`Done in ${clock((d().ended ?? d().started) - d().started)}${d().results.length > 1 ? ` · ${plural(d().results.filter((r) => !r.error).length, "file")} converted` : ""}${d().skipped ? ` · ${d().skipped} already up to date` : ""}`}</>}
             </Show>
           </div>
         </div>
